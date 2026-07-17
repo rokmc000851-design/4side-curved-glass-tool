@@ -32,8 +32,8 @@ controls.touches.ONE = THREE.TOUCH.ROTATE;
 controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
 
 scene.add(new THREE.AmbientLight(0x8ea8b8,1.4));
-const key = new THREE.DirectionalLight(0xffffff,2.4); key.position.set(90,-80,140); scene.add(key);
-const fill = new THREE.DirectionalLight(0x9ed9ff,.9); fill.position.set(-80,90,70); scene.add(fill);
+const key = new THREE.SpotLight(0xfff8ee,4.4,0,.1,.8,0);key.position.set(-90,120,150);key.target.position.set(-16,8,0);scene.add(key,key.target);
+const fill = new THREE.DirectionalLight(0x9ed9ff,.42); fill.position.set(-80,90,70); scene.add(fill);
 
 const modelRoot = new THREE.Group();
 scene.add(modelRoot);
@@ -148,7 +148,7 @@ function materials(p){
   return{
     Glass:new THREE.MeshPhysicalMaterial({color:glass.color,roughness:glass.roughness,metalness:0,transmission:glass.transmission,thickness:Math.max(.01,p.t),ior:1.5,clearcoat:glass.clearcoat,clearcoatRoughness:glass.clearcoatRoughness,transparent:true,opacity:glass.opacity,side:THREE.DoubleSide,depthWrite:false}),
     OCA:new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.16,metalness:0,transmission:.82,thickness:Math.max(.01,p.OCA_T),attenuationColor:new THREE.Color(oca.color),attenuationDistance:10,ior:1.47,transparent:oca.opacity<1,opacity:oca.opacity,side:THREE.FrontSide,depthWrite:oca.opacity>.92,envMapIntensity:.5}),
-    Panel:new THREE.MeshStandardMaterial({color:panel.color,roughness:.42,metalness:.05,transparent:panel.opacity<1,opacity:panel.opacity,side:THREE.FrontSide,depthWrite:panel.opacity>.92})
+    Panel:new THREE.MeshStandardMaterial({color:panel.color,roughness:.42,metalness:.05,transparent:panel.opacity<1,opacity:panel.opacity,side:THREE.FrontSide,depthWrite:true})
   };
 }
 
@@ -191,8 +191,9 @@ function rebuildModel(){
 function updateGrid(){
   if(grid){scene.remove(grid);grid.geometry.dispose();grid.material.dispose()}
   const size=Math.ceil(Math.max(params.X,params.Y)/20)*40;
-  grid=new THREE.GridHelper(size,Math.max(12,Math.round(size/10)),0x46525c,0x273139);
-  grid.rotation.x=Math.PI/2; grid.position.z=-Math.max(18,params.D+4); grid.material.transparent=true;grid.material.opacity=.7;grid.visible=$('showGrid').checked;scene.add(grid);
+  const mode=$('backgroundMode').value,palette=mode==='black'?[0x526674,0x34444f]:mode==='gray'?[0x8d99a3,0x737f89]:[0xaeb8c1,0xd4dae0];
+  grid=new THREE.GridHelper(size,Math.max(12,Math.round(size/10)),palette[0],palette[1]);
+  grid.rotation.x=Math.PI/2; grid.position.z=-Math.max(18,params.D+4); grid.material.transparent=true;grid.material.opacity=mode==='black'?.38:.3;grid.visible=$('showGrid').checked;scene.add(grid);
 }
 
 function fitCamera(reset=true){
@@ -209,6 +210,7 @@ function setPreset(name){
   const cornerDistance=Math.max(params.Rc*2.6,params.Lb*3,24);
   const views={
     top:{target:new THREE.Vector3(0,0,0),offset:new THREE.Vector3(0,0,d),zoom:1,up:new THREE.Vector3(0,1,0)},
+    isoOverview:{target:new THREE.Vector3(0,0,-params.D*.35),offset:new THREE.Vector3(Math.max(params.X,params.Y)*.8,-Math.max(params.X,params.Y)*1.35,Math.max(params.X,params.Y)*.62),zoom:1,up:new THREE.Vector3(0,0,1)},
     bottom:{target:new THREE.Vector3(0,0,-params.D/2),offset:new THREE.Vector3(0,0,-d),zoom:1,up:new THREE.Vector3(0,-1,0)},
     topCorner:{target:corner,offset:new THREE.Vector3(0,0,cornerDistance*1.35),zoom:4.2},
     frontCorner:{target:corner,offset:new THREE.Vector3(0,-d,0),zoom:4,up:new THREE.Vector3(0,0,1)},
@@ -266,7 +268,7 @@ $('glassStyle').addEventListener('change',()=>{$('glassOpacity').value=(glassSty
 $('showGrid').addEventListener('input',()=>{if(grid)grid.visible=$('showGrid').checked});
 $('showAxes').addEventListener('input',()=>{axes.visible=$('showAxes').checked});
 $('showOutline').addEventListener('input',()=>{const outline=modelRoot.getObjectByName('GlassOutline');if(outline)outline.visible=$('showOutline').checked});
-$('backgroundMode').addEventListener('change',()=>{const white=$('backgroundMode').value==='white';scene.background.set(white?0xf4f6f8:0x101418);if(grid){grid.material.color?.set?.(white?0xb8c2cc:0x273139);grid.material.needsUpdate=true}});
+$('backgroundMode').addEventListener('change',()=>{const mode=$('backgroundMode').value;scene.background.set(mode==='white'?0xf4f6f8:mode==='gray'?0x626b74:0x101418);if(params)updateGrid()});
 for(const button of document.querySelectorAll('[data-view]'))button.addEventListener('click',()=>setPreset(button.dataset.view));
 window.addEventListener('storage',event=>{if(event.key===SHARED_KEY){loadShared(event.newValue);update()}});
 canvas.addEventListener('pointerdown',()=>{cameraTween=null});
