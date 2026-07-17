@@ -45,6 +45,7 @@ scene.add(modelRoot);
 let grid;
 let params;
 let stackValid = true;
+let cameraTween = null;
 
 function readInputs(){
   const p={}; for(const id of INPUT_IDS)p[id]=Number($(id).value);
@@ -81,7 +82,8 @@ function roundedContour(p,delta,z,arcSteps=48){
   const centers=[[hx-r,hy-r],[-hx+r,hy-r],[-hx+r,-hy+r],[hx-r,-hy+r]],starts=[0,Math.PI/2,Math.PI,Math.PI*1.5],out=[];
   for(let c=0;c<4;c++)for(let i=0;i<arcSteps;i++){
     const a=starts[c]+Math.PI*.5*i/arcSteps;
-    out.push(new THREE.Vector3(centers[c][0]+r*Math.cos(a),centers[c][1]+r*Math.sin(a),z));
+    const v=new THREE.Vector3(centers[c][0]+r*Math.cos(a),centers[c][1]+r*Math.sin(a),z);
+    v.nx=Math.cos(a);v.ny=Math.sin(a);out.push(v);
   }
   return out;
 }
@@ -90,15 +92,21 @@ function surfaceContour(p,s,h,arcSteps){
   const alpha=Math.asin(Math.min(1,Math.max(0,s/p.R)));
   const delta=s+h*Math.sin(alpha);
   const z=-p.R*(1-Math.cos(alpha))+h*Math.cos(alpha);
-  return roundedContour(p,delta,z,arcSteps);
+  const contour=roundedContour(p,delta,z,arcSteps);
+  for(const v of contour)v.alpha=alpha;
+  return contour;
 }
 
-function appendSurface(positions,indices,p,h,maxS,reverse,rings=48,arcSteps=48){
+function appendSurface(positions,normals,indices,p,h,maxS,reverse,rings=48,arcSteps=48){
   const ringStarts=[],contours=[];
   for(let j=0;j<=rings;j++){
     const s=maxS*j/rings,contour=surfaceContour(p,s,h,arcSteps),start=positions.length/3;
     ringStarts.push(start); contours.push(contour);
-    for(const v of contour)positions.push(v.x,v.y,v.z);
+    for(const v of contour){
+      positions.push(v.x,v.y,v.z);
+      const sign=reverse?-1:1;
+      normals.push(sign*v.nx*Math.sin(v.alpha),sign*v.ny*Math.sin(v.alpha),sign*Math.cos(v.alpha));
+    }
   }
   const count=contours[0].length;
   const flat2=contours[0].map(v=>new THREE.Vector2(v.x,v.y));
@@ -112,21 +120,21 @@ function appendSurface(positions,indices,p,h,maxS,reverse,rings=48,arcSteps=48){
 }
 
 function buildClosedLayer(p,{top,bottom,maxS}){
-  const positions=[],indices=[];
-  const topOuter=appendSurface(positions,indices,p,top,maxS,false);
-  const bottomOuter=appendSurface(positions,indices,p,bottom,maxS,true);
+  const positions=[],normals=[],indices=[];
+  const topOuter=appendSurface(positions,normals,indices,p,top,maxS,false);
+  const bottomOuter=appendSurface(positions,normals,indices,p,bottom,maxS,true);
   const count=topOuter.length,sideTop=positions.length/3;
-  for(const v of topOuter)positions.push(v.x,v.y,v.z);
+  for(const v of topOuter){positions.push(v.x,v.y,v.z);normals.push(v.nx*Math.cos(v.alpha),v.ny*Math.cos(v.alpha),-Math.sin(v.alpha))}
   const sideBottom=positions.length/3;
-  for(const v of bottomOuter)positions.push(v.x,v.y,v.z);
+  for(const v of bottomOuter){positions.push(v.x,v.y,v.z);normals.push(v.nx*Math.cos(v.alpha),v.ny*Math.cos(v.alpha),-Math.sin(v.alpha))}
   for(let i=0;i<count;i++){
     const n=(i+1)%count,a=sideTop+i,b=sideTop+n,c=sideBottom+n,d=sideBottom+i;
     indices.push(a,b,c,a,c,d);
   }
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  geometry.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
   geometry.setIndex(indices);
-  geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   return geometry;
 }
@@ -135,7 +143,7 @@ function materials(p){
   const setting=name=>({color:$(name+'Color').value,opacity:Number($(name+'Opacity').value)});
   const glass=setting('glass'),oca=setting('oca'),panel=setting('panel');
   return{
-    Glass:new THREE.MeshPhysicalMaterial({color:glass.color,roughness:.34,metalness:0,transmission:.04,thickness:Math.max(.01,p.t),ior:1.5,clearcoat:.5,clearcoatRoughness:.22,reflectivity:.38,specularIntensity:.34,specularColor:0xbcd0e5,transparent:glass.opacity<1,opacity:glass.opacity,side:THREE.FrontSide,depthWrite:true,envMapIntensity:.42}),
+    Glass:new THREE.MeshPhysicalMaterial({color:glass.color,emissive:glass.color,emissiveIntensity:.28,roughness:.34,metalness:0,transmission:.04,thickness:Math.max(.01,p.t),ior:1.5,clearcoat:.5,clearcoatRoughness:.22,reflectivity:.38,specularIntensity:.34,specularColor:0xbcd0e5,transparent:glass.opacity<1,opacity:glass.opacity,side:THREE.FrontSide,depthWrite:true,envMapIntensity:.42}),
     OCA:new THREE.MeshPhysicalMaterial({color:oca.color,roughness:.3,metalness:0,transmission:.28,thickness:Math.max(.01,p.OCA_T),ior:1.47,transparent:oca.opacity<1,opacity:oca.opacity,side:THREE.FrontSide,depthWrite:oca.opacity>.92,envMapIntensity:.55}),
     Panel:new THREE.MeshStandardMaterial({color:panel.color,roughness:.42,metalness:.05,transparent:panel.opacity<1,opacity:panel.opacity,side:THREE.FrontSide,depthWrite:panel.opacity>.92})
   };
@@ -180,14 +188,23 @@ function setPreset(name){
   const d=Math.max(params.X,params.Y)*2.2;
   const corner=new THREE.Vector3(params.X/2-params.Rc*.45,params.Y/2-params.Rc*.45,-params.D*.35);
   const views={
-    top:{target:new THREE.Vector3(0,0,0),offset:new THREE.Vector3(0,0,d),zoom:1},
+    top:{target:new THREE.Vector3(0,0,0),offset:new THREE.Vector3(0,0,d),zoom:1,up:new THREE.Vector3(0,1,0)},
+    bottom:{target:new THREE.Vector3(0,0,-params.D/2),offset:new THREE.Vector3(0,0,-d),zoom:1,up:new THREE.Vector3(0,-1,0)},
     topCorner:{target:corner,offset:new THREE.Vector3(0,0,d),zoom:4.2},
     frontCorner:{target:corner,offset:new THREE.Vector3(0,-d,.18*d),zoom:4},
     sideCorner:{target:corner,offset:new THREE.Vector3(d,0,.18*d),zoom:4},
     isoCorner:{target:corner,offset:new THREE.Vector3(d,-d,.72*d),zoom:3.4}
   };
   const view=views[name]||views.top;
-  controls.target.copy(view.target);camera.position.copy(view.target).add(view.offset);camera.up.set(0,1,0);camera.zoom=view.zoom;camera.lookAt(view.target);camera.updateProjectionMatrix();controls.update();
+  const endPosition=view.target.clone().add(view.offset);
+  cameraTween={start:performance.now(),duration:720,fromPosition:camera.position.clone(),toPosition:endPosition,fromTarget:controls.target.clone(),toTarget:view.target.clone(),fromZoom:camera.zoom,toZoom:view.zoom,fromUp:camera.up.clone(),toUp:(view.up||new THREE.Vector3(0,1,0)).clone()};
+}
+
+function updateCameraTween(now){
+  if(!cameraTween)return;
+  const raw=Math.min(1,(now-cameraTween.start)/cameraTween.duration),t=raw<.5?4*raw*raw*raw:1-Math.pow(-2*raw+2,3)/2;
+  camera.position.lerpVectors(cameraTween.fromPosition,cameraTween.toPosition,t);controls.target.lerpVectors(cameraTween.fromTarget,cameraTween.toTarget,t);camera.up.lerpVectors(cameraTween.fromUp,cameraTween.toUp,t).normalize();camera.zoom=THREE.MathUtils.lerp(cameraTween.fromZoom,cameraTween.toZoom,t);camera.lookAt(controls.target);camera.updateProjectionMatrix();
+  if(raw>=1)cameraTween=null;
 }
 
 function resize(){
@@ -226,10 +243,11 @@ for(const id of INPUT_IDS)$(id).addEventListener('input',()=>{update();saveShare
 for(const id of ['showGlass','showOCA','showPanel','glassColor','glassOpacity','ocaColor','ocaOpacity','panelColor','panelOpacity'])$(id).addEventListener('input',rebuildModel);
 for(const button of document.querySelectorAll('[data-view]'))button.addEventListener('click',()=>setPreset(button.dataset.view));
 window.addEventListener('storage',event=>{if(event.key===SHARED_KEY){loadShared(event.newValue);update()}});
+canvas.addEventListener('pointerdown',()=>{cameraTween=null});
 canvas.addEventListener('dblclick',()=>{fitCamera(true);controls.reset()});
 new ResizeObserver(resize).observe(canvas);
 
 loadShared();update();fitCamera(true);resize();
 const initialView=new URLSearchParams(location.search).get('view');
 if(initialView)setPreset(initialView);
-renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera)});
+renderer.setAnimationLoop(time=>{updateCameraTween(time);controls.update();renderer.render(scene,camera)});
