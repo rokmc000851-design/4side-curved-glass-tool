@@ -32,8 +32,8 @@ controls.touches.ONE = THREE.TOUCH.ROTATE;
 controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
 
 scene.add(new THREE.AmbientLight(0x8ea8b8,1.4));
-const key = new THREE.SpotLight(0xfff8ee,4.4,0,.1,.8,0);key.position.set(-90,120,150);key.target.position.set(-16,8,0);scene.add(key,key.target);
-const fill = new THREE.DirectionalLight(0x9ed9ff,.42); fill.position.set(-80,90,70); scene.add(fill);
+const key = new THREE.DirectionalLight(0xffffff,2.4);key.position.set(90,-80,140);scene.add(key);
+const fill = new THREE.DirectionalLight(0x9ed9ff,.9);fill.position.set(-80,90,70);scene.add(fill);
 
 const modelRoot = new THREE.Group();
 scene.add(modelRoot);
@@ -215,7 +215,7 @@ function setPreset(name){
     topCorner:{target:corner,offset:new THREE.Vector3(0,0,cornerDistance*1.35),zoom:4.2},
     frontCorner:{target:corner,offset:new THREE.Vector3(0,-d,0),zoom:4,up:new THREE.Vector3(0,0,1)},
     sideCorner:{target:corner,offset:new THREE.Vector3(d,0,0),zoom:4,up:new THREE.Vector3(0,0,1)},
-    isoCorner:{target:corner,offset:new THREE.Vector3(cornerDistance*.9,-cornerDistance*1.05,cornerDistance*.65),zoom:3.4}
+    isoCorner:{target:corner,offset:new THREE.Vector3(cornerDistance*.9,-cornerDistance*1.05,cornerDistance*.65),zoom:4.6,up:new THREE.Vector3(0,0,1)}
   };
   const view=views[name]||views.top;
   const endPosition=view.target.clone().add(view.offset);
@@ -263,6 +263,7 @@ function saveShared(){const values={};for(const id of INPUT_IDS)values[id]=$(id)
 function loadShared(raw=localStorage.getItem(SHARED_KEY)){if(!raw)return;try{const values=(JSON.parse(raw).values||JSON.parse(raw));for(const id of INPUT_IDS)if(values[id]!==undefined)$(id).value=values[id]}catch(error){console.warn(error)}}
 
 for(const id of INPUT_IDS)$(id).addEventListener('input',()=>{update();saveShared()});
+$('resetInputs').addEventListener('click',()=>{const defaults={X:75,Y:160,t:.5,R:10,D:1,Rc:10,PO:.1,DS:.5,OCA_T:.1,PANEL_T:.1};for(const [id,value] of Object.entries(defaults))$(id).value=value;update();saveShared()});
 for(const id of ['showGlass','showOCA','showPanel','glassOpacity','ocaColor','ocaOpacity','panelColor','panelOpacity'])$(id).addEventListener('input',rebuildModel);
 $('glassStyle').addEventListener('change',()=>{$('glassOpacity').value=(glassStyles[$('glassStyle').value]||glassStyles.aqua).opacity;rebuildModel()});
 $('showGrid').addEventListener('input',()=>{if(grid)grid.visible=$('showGrid').checked});
