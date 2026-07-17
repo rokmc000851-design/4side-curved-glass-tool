@@ -211,7 +211,6 @@ function setPreset(name){
   const views={
     top:{target:new THREE.Vector3(0,0,0),offset:new THREE.Vector3(0,0,d),zoom:1,up:new THREE.Vector3(0,1,0)},
     isoOverview:{target:new THREE.Vector3(0,0,-params.D*.35),offset:new THREE.Vector3(Math.max(params.X,params.Y)*.8,-Math.max(params.X,params.Y)*1.35,Math.max(params.X,params.Y)*.62),zoom:1,up:new THREE.Vector3(0,0,1)},
-    bottom:{target:new THREE.Vector3(0,0,-params.D/2),offset:new THREE.Vector3(0,0,-d),zoom:1,up:new THREE.Vector3(0,-1,0)},
     topCorner:{target:corner,offset:new THREE.Vector3(0,0,cornerDistance*1.35),zoom:4.2},
     frontCorner:{target:corner,offset:new THREE.Vector3(0,-d,0),zoom:4,up:new THREE.Vector3(0,0,1)},
     sideCorner:{target:corner,offset:new THREE.Vector3(d,0,0),zoom:4,up:new THREE.Vector3(0,0,1)},
@@ -219,7 +218,7 @@ function setPreset(name){
   };
   const view=views[name]||views.top;
   const endPosition=view.target.clone().add(view.offset);
-  cameraTween={start:performance.now(),duration:1200,fromPosition:camera.position.clone(),toPosition:endPosition,fromTarget:controls.target.clone(),toTarget:view.target.clone(),fromZoom:camera.zoom,toZoom:view.zoom,fromUp:camera.up.clone(),toUp:(view.up||new THREE.Vector3(0,1,0)).clone(),arc:name==='bottom'?view.target.clone().add(new THREE.Vector3(d,0,0)):null};
+  cameraTween={start:performance.now(),duration:1200,fromPosition:camera.position.clone(),toPosition:endPosition,fromTarget:controls.target.clone(),toTarget:view.target.clone(),fromZoom:camera.zoom,toZoom:view.zoom,fromUp:camera.up.clone(),toUp:(view.up||new THREE.Vector3(0,1,0)).clone(),arc:null};
 }
 
 function updateCameraTween(now){
