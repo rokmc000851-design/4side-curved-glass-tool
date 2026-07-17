@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>4-Side Curved Glass Model A — Glass / OCA / Panel Standalone</title>
+<style>
+:root{--bg:#eef2f7;--panel:#fff;--line:#cbd5e1;--text:#162033;--muted:#64748b;--accent:#2563eb;--bad:#dc2626;--good:#059669}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text)}
+header{height:54px;padding:9px 14px;background:#fff;border-bottom:1px solid var(--line);overflow:hidden} h1{font-size:17px;margin:0;line-height:21px}.sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app{display:grid;grid-template-columns:clamp(245px,22vw,320px) minmax(0,1fr);height:calc(100vh - 54px);min-height:0;overflow:hidden} aside{padding:10px;border-right:1px solid var(--line);background:#f8fafc;overflow:auto;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.05)} .pad{padding:10px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px} label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
+input{width:100%;padding:6px;border-radius:8px;border:1px solid #b8c2d0;background:#fff;color:#111827} button{border:1px solid #b8c2d0;background:#fff;color:#1e293b;border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:600}
+button.active,.primary{background:var(--accent);border-color:var(--accent);color:#fff}.row{display:flex;gap:8px;margin-top:9px}.row>*{flex:1}
+.status{margin-top:7px;padding:7px;border-radius:8px;background:#f8fafc;font-size:12px;line-height:1.45}.ok{border-left:3px solid var(--good)}.bad{border-left:3px solid var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-top:7px}td{padding:5px 3px;border-bottom:1px solid #e2e8f0}td:last-child{text-align:right;font-family:Consolas,monospace}
+main{padding:10px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:10px;min-width:0;min-height:0;overflow:hidden}.card-title{padding:7px 9px;border-bottom:1px solid var(--line);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.viewer{display:flex;flex-direction:column;min-height:0;height:100%}.canvas-wrap{flex:1;min-height:0;background:linear-gradient(180deg,#fafafa,#e9eef5)}
+#presetView{width:100%;height:100%;display:block}.right-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,.82fr) minmax(0,1fr);gap:10px;min-height:0;height:100%}.right-grid .card{display:flex;flex-direction:column;min-height:0}.right-grid .border-card{grid-column:1 / 3}.view{width:100%;height:100%;min-height:0;flex:1;display:block;background:#fff}
+.hint{font-size:11px;color:var(--muted);padding:7px 10px;border-top:1px solid var(--line)}
+@media(max-width:1050px){.app{grid-template-columns:250px minmax(0,1fr)}main{padding:7px;gap:7px;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}.right-grid{gap:7px}.card-title{font-size:12px}.card-title .sub{display:none}.hint{font-size:10px;padding:5px 7px}}
+@media(max-height:760px){header{height:46px;padding:5px 12px}.app{height:calc(100vh - 46px)}aside{padding:7px}.fields{gap:5px;margin-top:6px}label{font-size:10px;margin-bottom:2px}input{padding:4px 6px}.status{font-size:10px;line-height:1.25;margin-top:5px;padding:5px}table{font-size:10px;margin-top:5px}td{padding:3px 2px}.card-title{padding:5px 7px}.hint{padding:4px 6px}}
+@media(max-width:760px){body{min-width:720px}}
+</style>
+</head>
+<body>
+<header><h1>4-Side Curved Cover Glass Geometry — Model A</h1><div class="sub">Glass + OCA + Panel Standalone Final v20 · Drag 이동 · Wheel 확대/축소 · Double-click 초기화</div></header>
+<div class="app">
+<aside><div class="card pad"><b>Input Parameters (mm)</b><div class="fields">
+<div><label>X — X Size</label><input id="X" type="number" value="75" step="1"></div><div><label>Y — Y Size</label><input id="Y" type="number" value="160" step="1"></div>
+<div><label>t — Thickness</label><input id="t" type="number" value="0.5" step="0.1"></div><div><label>R — Bending R</label><input id="R" type="number" value="10" step="0.5"></div>
+<div><label>D — Bending Depth</label><input id="D" type="number" value="1" step="0.1"></div><div><label>Rc — Corner Round R</label><input id="Rc" type="number" value="10" step="0.5"></div>
+<div><label>Panel Size Offset — Arc Length</label><input id="PO" type="number" value="0.1" step="0.05"></div><div><label>Panel Dead Space — Arc Length</label><input id="DS" type="number" value="0.3" step="0.05"></div>
+<div><label>OCA Thickness</label><input id="OCA_T" type="number" value="0.1" step="0.01"></div><div><label>Panel Thickness</label><input id="PANEL_T" type="number" value="0.1" step="0.01"></div></div>
+<div id="status" class="status ok"></div>
+<table><tr><td colspan="2" style="text-align:left;color:#64748b;font-family:Arial,sans-serif"><b>All bending dimensions: Glass Bottom Surface basis</b></td></tr><tr><td>θ — Bending Angle</td><td id="theta">-</td></tr><tr><td>Lb — Bending Length</td><td id="Lb">-</td></tr><tr><td>Sb — Arc Length</td><td id="Sb">-</td></tr><tr><td>Rf — Flat Corner R</td><td id="Rf">-</td></tr><tr><td>D/R (H/R) — Depth / Bending R</td><td id="DR">-</td></tr><tr><td>Shrinkage — Corner Compression</td><td id="Shrinkage">-</td></tr><tr><td>Physical Border</td><td id="PhysicalBorder">-</td></tr><tr><td>Visible Border</td><td id="VisibleBorder">-</td></tr></table>
+</div></aside>
+<main>
+<section class="card viewer"><div class="card-title"><span>Overall Top View</span><span class="sub">전체 Glass Top View</span></div>
+<div class="canvas-wrap"><canvas id="presetView"></canvas></div><div class="hint">마우스 드래그: 이동 · 휠: 확대/축소 · 더블클릭: 초기화</div></section>
+<div class="right-grid"><section class="card"><div class="card-title"><span>Corner Side View</span><span class="sub">Glass-only 2D Bending Cross-section (v12)</span></div><canvas id="section" class="view"></canvas></section>
+<section class="card"><div class="card-title"><span>Corner Top View</span><span class="sub">좌측상단 코너 확대</span></div><canvas id="corner" class="view"></canvas></section>
+<section class="card border-card"><div class="card-title"><span>Border View</span><span class="sub">Physical / Visible Border 정의</span></div><canvas id="border" class="view"></canvas><div class="hint">OCA/Panel 좌측 끝 = Glass 좌측 끝 · 검은색: Panel 내부 Dead Space · Border: Top View 직선거리</div></section></div>
+</main></div>
+<script>
+'use strict'; const $=id=>document.getElementById(id); let P;
+const viewState={presetView:{zoom:1,panX:0,panY:0},section:{zoom:1,panX:0,panY:0},corner:{zoom:1,panX:0,panY:0},border:{zoom:1,panX:0,panY:0}};
+function applyViewTransform(ctx,c){const v=viewState[c.id];const W=c.clientWidth,H=c.clientHeight;ctx.translate(W/2+v.panX,H/2+v.panY);ctx.scale(v.zoom,v.zoom);ctx.translate(-W/2,-H/2)}
+function redrawCanvas(id){if(!P)return;if(id==='presetView')drawPreset();else if(id==='section')drawSection();else if(id==='corner')drawCorner();else drawBorder()}
+function installNav(c){let dragging=false,lastX=0,lastY=0;c.style.cursor='grab';c.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;c.setPointerCapture(e.pointerId);c.style.cursor='grabbing'});c.addEventListener('pointermove',e=>{if(!dragging)return;const v=viewState[c.id];v.panX+=e.clientX-lastX;v.panY+=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;redrawCanvas(c.id)});const stop=e=>{dragging=false;c.style.cursor='grab';try{c.releasePointerCapture(e.pointerId)}catch(_){}};c.addEventListener('pointerup',stop);c.addEventListener('pointercancel',stop);c.addEventListener('wheel',e=>{e.preventDefault();const v=viewState[c.id],r=c.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;const old=v.zoom,f=Math.exp(-e.deltaY*.0012),next=Math.max(.35,Math.min(8,old*f));v.panX=(mx-c.clientWidth/2)-(mx-c.clientWidth/2-v.panX)*(next/old);v.panY=(my-c.clientHeight/2)-(my-c.clientHeight/2-v.panY)*(next/old);v.zoom=next;redrawCanvas(c.id)},{passive:false});c.addEventListener('dblclick',()=>{viewState[c.id]={zoom:1,panX:0,panY:0};redrawCanvas(c.id)})}
+function read(){
+  const p={};
+  for(const k of ['X','Y','t','R','D','Rc','PO','DS','OCA_T','PANEL_T']) p[k]=Number($(k).value);
+  p.theta=Math.acos(1-p.D/p.R);
+  p.Lb=Math.sqrt(Math.max(0,2*p.R*p.D-p.D*p.D));
+  p.Sb=p.R*p.theta;
+  p.Rf=p.Rc-p.Lb;
+  p.DR=p.R>0?p.D/p.R:NaN;
+  p.Shrinkage=p.Sb>0?(p.Sb-p.Lb)/p.Sb:0;
+
+  // Arc-length definitions on the common bending angle coordinate.
+  p.panelAlpha=p.theta-p.PO/p.R;
+  p.deadAlpha=p.panelAlpha-p.DS/p.R;
+  p.panelTopRadius=p.R-p.OCA_T;
+  p.panelBottomRadius=p.panelTopRadius-p.PANEL_T;
+
+  const point=(radius,a)=>({u:radius*Math.sin(a),z:-p.R+radius*Math.cos(a)});
+  p.glassBottomEnd=point(p.R,p.theta);
+  p.glassTopEnd=point(p.R+p.t,p.theta);
+  p.panelBottomDead=point(p.panelBottomRadius,p.deadAlpha);
+  p.PhysicalBorder=Math.abs(p.glassTopEnd.u-p.panelBottomDead.u);
+
+  // Visible-border construction (v18):
+  // Q = Panel Bottom at the inner boundary of Panel Dead Space.
+  // V = intersection of the Glass Top surface with the Glass Top local normal passing through Q.
+  // Because all stack surfaces are concentric normal offsets, Q and V share the same alpha.
+  // Visible Border is the top-view/u-axis straight projection from V to the Glass Top bending end.
+  const q=p.panelBottomDead, rt=p.R+p.t;
+  p.visibleAlpha=p.deadAlpha;
+  p.visibleValid=Number.isFinite(p.visibleAlpha) && p.visibleAlpha>=0 && p.visibleAlpha<=p.theta;
+  if(p.visibleValid){
+    p.visiblePoint=point(rt,p.visibleAlpha);
+    p.VisibleBorder=Math.abs(p.glassTopEnd.u-p.visiblePoint.u);
+  }else{
+    p.visiblePoint=null;
+    p.VisibleBorder=NaN;
+  }
+  return p;
+}
+function errors(p){
+  const e=[];
+  for(const k of ['X','Y','t','R','Rc']) if(!isFinite(p[k])||p[k]<=0) e.push(k+'는 0보다 커야 합니다.');
+  if(!isFinite(p.D)||p.D<0||p.D>=2*p.R) e.push('D는 0 이상 2R 미만이어야 합니다.');
+  if(!isFinite(p.PO)||p.PO<0) e.push('Panel Size Offset은 0 이상이어야 합니다.');
+  if(!isFinite(p.DS)||p.DS<0) e.push('Panel Dead Space는 0 이상이어야 합니다.');
+  if(!isFinite(p.OCA_T)||p.OCA_T<=0) e.push('OCA Thickness는 0보다 커야 합니다.');
+  if(!isFinite(p.PANEL_T)||p.PANEL_T<=0) e.push('Panel Thickness는 0보다 커야 합니다.');
+  if(p.OCA_T+p.PANEL_T>=p.R) e.push('OCA + Panel 두께 합은 Bending R보다 작아야 합니다.');
+  if(p.Rf<0) e.push('Rf = Rc − Lb가 음수입니다.');
+  if(2*p.Lb>=Math.min(p.X,p.Y)) e.push('Lb가 너무 커 Flat 영역이 사라집니다.');
+  if(p.Rc>Math.min(p.X,p.Y)/2) e.push('Rc가 Glass 크기에 비해 너무 큽니다.');
+  if(p.PO>p.Sb) e.push('Panel Size Offset은 Glass Arc Length Sb 이하여야 합니다.');
+  if(p.panelAlpha<0) e.push('Panel Size Offset으로 Panel 끝단이 Bending 시작점 안쪽을 벗어났습니다.');
+  if(p.DS>p.R*Math.max(0,p.panelAlpha)) e.push('Panel Dead Space가 Panel의 사용 가능한 Bending Arc보다 큽니다.');
+  if(p.deadAlpha<0) e.push('Panel Dead Space 내측 경계가 Bending 시작점 안쪽을 벗어났습니다.');
+  return e;
+}
+function ctx2(c){const d=devicePixelRatio||1,w=Math.max(1,Math.round(c.clientWidth*d)),h=Math.max(1,Math.round(c.clientHeight*d));if(c.width!==w||c.height!==h){c.width=w;c.height=h}const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);return x}
+function roundRectPath(ctx,x,y,w,h,r){r=Math.max(0,Math.min(r,w/2,h/2));ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
+function glassGradient(ctx,x,y,w,h){const g=ctx.createLinearGradient(x,y,x+w*.85,y+h);g.addColorStop(0,'rgba(225,229,233,.72)');g.addColorStop(.24,'rgba(178,186,194,.52)');g.addColorStop(.48,'rgba(210,216,222,.62)');g.addColorStop(.72,'rgba(145,154,164,.48)');g.addColorStop(1,'rgba(205,211,217,.70)');return g}
+function drawTopGlass(ctx,x,y,w,h,r,inset){
+  ctx.save();ctx.shadowColor='rgba(15,23,42,.18)';ctx.shadowBlur=14;ctx.shadowOffsetY=6;
+  roundRectPath(ctx,x,y,w,h,r);ctx.fillStyle=glassGradient(ctx,x,y,w,h);ctx.fill();ctx.restore();
+  roundRectPath(ctx,x,y,w,h,r);ctx.strokeStyle='rgba(51,65,85,.58)';ctx.lineWidth=.8;ctx.stroke();
+  roundRectPath(ctx,x+inset,y+inset,w-2*inset,h-2*inset,Math.max(0,r-inset));ctx.setLineDash([]);ctx.strokeStyle='rgba(100,116,139,.62)';ctx.lineWidth=.65;ctx.stroke();
+  // angle-aware reflection: soft curved bands only
+  ctx.save();roundRectPath(ctx,x,y,w,h,r);ctx.clip();
+  const rg=ctx.createRadialGradient(x+w*.18,y+h*.10,2,x+w*.18,y+h*.10,Math.max(w,h)*.72);rg.addColorStop(0,'rgba(255,255,255,.34)');rg.addColorStop(.20,'rgba(255,255,255,.12)');rg.addColorStop(.58,'rgba(255,255,255,0)');ctx.fillStyle=rg;ctx.fillRect(x,y,w,h);
+  const eg=ctx.createLinearGradient(x,y,x+inset*1.7,y+inset*1.7);eg.addColorStop(0,'rgba(255,255,255,.22)');eg.addColorStop(.45,'rgba(255,255,255,.05)');eg.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=eg;ctx.fillRect(x,y,w,h);
+  ctx.restore();
+}
+function drawFullTop(ctx,W,H){ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,$('presetView'));const pad=42,sc=Math.min((W-2*pad)/P.X,(H-2*pad)/P.Y);const w=P.X*sc,h=P.Y*sc,x=(W-w)/2,y=(H-h)/2,r=P.Rc*sc,inset=Math.max(1,P.Lb*sc);drawTopGlass(ctx,x,y,w,h,r,inset);ctx.fillStyle='#334155';ctx.font='12px Arial';ctx.fillText(`X = ${P.X.toFixed(1)} mm`,x+w/2-35,y+h+25);ctx.save();ctx.translate(x-25,y+h/2+30);ctx.rotate(-Math.PI/2);ctx.fillText(`Y = ${P.Y.toFixed(1)} mm`,0,0);ctx.restore();ctx.restore()}
+function drawCornerTopPreset(ctx,W,H){ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,$('presetView'));const margin=28,crop=Math.min(P.X,P.Y)*.38,sc=Math.min((W-2*margin)/crop,(H-2*margin)/crop);const fullW=P.X*sc,fullH=P.Y*sc;const x=W-margin-fullW,y=margin;drawTopGlass(ctx,x,y,fullW,fullH,P.Rc*sc,P.Lb*sc);ctx.fillStyle='rgba(255,255,255,.72)';ctx.fillRect(0,0,Math.max(0,x),H);ctx.fillRect(0,0,W,margin*.45);ctx.fillStyle='#334155';ctx.font='12px Arial';ctx.fillText(`Rc = ${P.Rc.toFixed(2)} mm`,W-150,24);ctx.fillText(`Rf = ${P.Rf.toFixed(2)} mm`,W-150,42);ctx.restore()}
+function drawCornerSide(ctx,W,H){
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  applyViewTransform(ctx,$('presetView'));
+
+  // Corner Side preset is intentionally rendered as a 2D bending cross-section.
+  // Geometry and end-face direction are identical to the Bending Section view.
+  const pad=42;
+  const flatMm=Math.max(3,Math.min(10,P.Lb*.8));
+  const sc=Math.min(
+    (W-2*pad)/(flatMm+P.Lb+P.t+3),
+    (H-2*pad)/(P.D+P.t+3)
+  );
+  const ox=pad+flatMm*sc;
+  const oy=Math.max(54,H*.33);
+  const bottom=[],top=[];
+
+  for(let i=0;i<=140;i++){
+    const a=P.theta*i/140;
+    const sa=Math.sin(a),ca=Math.cos(a);
+    const xb=ox+P.R*sa*sc;
+    const yb=oy+P.R*(1-ca)*sc;
+    bottom.push([xb,yb]);
+    top.push([xb+P.t*sa*sc,yb-P.t*ca*sc]);
+  }
+
+  // Closed glass section: flat → curved bottom → local-normal end face → curved top → flat.
+  ctx.save();
+  ctx.shadowColor='rgba(15,23,42,.16)';
+  ctx.shadowBlur=12;
+  ctx.shadowOffsetY=5;
+  ctx.beginPath();
+  ctx.moveTo(pad,oy);
+  ctx.lineTo(...bottom[0]);
+  for(let i=1;i<bottom.length;i++)ctx.lineTo(...bottom[i]);
+  for(let i=top.length-1;i>=0;i--)ctx.lineTo(...top[i]);
+  ctx.lineTo(pad,oy-P.t*sc);
+  ctx.closePath();
+  const g=ctx.createLinearGradient(pad,oy-P.t*sc,ox+P.Lb*sc,oy+P.D*sc);
+  g.addColorStop(0,'rgba(211,216,221,.62)');
+  g.addColorStop(.48,'rgba(163,171,180,.52)');
+  g.addColorStop(1,'rgba(202,208,214,.68)');
+  ctx.fillStyle=g;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.strokeStyle='rgba(51,65,85,.62)';
+  ctx.lineWidth=.85;
+  ctx.stroke();
+
+  // Curvature-dependent reflection only; no straight white guide line.
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,.34)';
+  ctx.lineWidth=Math.max(1,P.t*sc*.3);
+  ctx.beginPath();
+  for(let i=Math.floor(top.length*.18);i<top.length;i++){
+    const q=top[i];
+    if(i===Math.floor(top.length*.18))ctx.moveTo(q[0],q[1]+P.t*sc*.22);
+    else ctx.lineTo(q[0],q[1]+P.t*sc*.22);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle='#334155';
+  ctx.font='12px Arial';
+  ctx.fillText('2D Bending Cross-section',pad,H-18);
+  
+  ctx.restore();
+}
+function drawPreset(){if(!P)return;const c=$('presetView'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;drawFullTop(ctx,W,H)}
+function dimLine(ctx,x1,y1,x2,y2,text,color='#2563eb'){ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();const a=Math.atan2(y2-y1,x2-x1),s=7;for(const [x,y,d] of [[x1,y1,1],[x2,y2,-1]]){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+d*s*Math.cos(a+2.5),y+d*s*Math.sin(a+2.5));ctx.lineTo(x+d*s*Math.cos(a-2.5),y+d*s*Math.sin(a-2.5));ctx.closePath();ctx.fill()}ctx.font='12px Arial';ctx.fillText(text,(x1+x2)/2+6,(y1+y2)/2-6);ctx.restore()}
+function sectionPoints(P,sc,ox,oy,alphaMax=P.theta,radius=P.R){const pts=[];for(let i=0;i<=120;i++){const a=alphaMax*i/120;pts.push([ox+radius*Math.sin(a)*sc,oy+radius*(1-Math.cos(a))*sc,a])}return pts}
+function drawSection(){
+  const c=$('section'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;
+  ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,c);
+  const flatMm=Math.max(3,Math.min(8,P.Lb*.65)),pad=44;
+  const sc=Math.min((W-2*pad)/(flatMm+P.Lb+P.t+6),(H-2*pad)/(P.R+P.D+P.t+6));
+  const ox=pad+flatMm*sc,oy=Math.max(92,H*.36),bottom=[],top=[];
+  for(let i=0;i<=160;i++){
+    const a=P.theta*i/160,s=Math.sin(a),co=Math.cos(a),x=P.R*s,z=-P.R*(1-co);
+    bottom.push([ox+x*sc,oy-z*sc]); top.push([ox+(x+P.t*s)*sc,oy-(z+P.t*co)*sc]);
+  }
+  ctx.beginPath();ctx.moveTo(pad,oy);ctx.lineTo(...bottom[0]);for(const q of bottom.slice(1))ctx.lineTo(...q);
+  for(let i=top.length-1;i>=0;i--)ctx.lineTo(...top[i]);ctx.lineTo(pad,oy-P.t*sc);ctx.closePath();
+  const g=ctx.createLinearGradient(pad,oy-P.t*sc,ox+P.Lb*sc,oy+P.D*sc);g.addColorStop(0,'rgba(214,219,224,.72)');g.addColorStop(.58,'rgba(158,168,178,.55)');g.addColorStop(1,'rgba(198,205,212,.68)');ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='rgba(51,65,85,.68)';ctx.lineWidth=.85;ctx.stroke();
+
+  const center=[ox,oy+P.R*sc],start=bottom[0],end=bottom.at(-1),topEnd=top.at(-1);
+  ctx.save();ctx.setLineDash([5,5]);ctx.strokeStyle='#64748b';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(...center);ctx.lineTo(...start);ctx.moveTo(...center);ctx.lineTo(...end);ctx.stroke();ctx.restore();
+  ctx.fillStyle='#475569';ctx.beginPath();ctx.arc(center[0],center[1],3,0,Math.PI*2);ctx.fill();
+  const rm=[(center[0]+end[0])/2,(center[1]+end[1])/2];ctx.font='12px Arial';ctx.fillText(`R ${P.R.toFixed(3)} mm`,rm[0]+7,rm[1]-5);
+
+  ctx.strokeStyle='#7c3aed';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(center[0],center[1],Math.max(18,P.R*sc*.28),-Math.PI/2,-Math.PI/2+P.theta);ctx.stroke();ctx.fillStyle='#7c3aed';ctx.fillText(`θ ${(P.theta*180/Math.PI).toFixed(2)}°`,center[0]+22,center[1]-22);
+
+  const yLb=Math.min(top[0][1],topEnd[1])-28;dimLine(ctx,start[0],yLb,end[0],yLb,`Lb ${P.Lb.toFixed(3)} mm`,'#2563eb');
+  ctx.strokeStyle='#2563eb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(start[0],start[1]);ctx.lineTo(start[0],yLb);ctx.moveTo(end[0],end[1]);ctx.lineTo(end[0],yLb);ctx.stroke();
+  const xD=Math.min(W-26,end[0]+34);dimLine(ctx,xD,start[1],xD,end[1],`D ${P.D.toFixed(3)} mm`,'#dc2626');
+  ctx.strokeStyle='#dc2626';ctx.beginPath();ctx.moveTo(start[0],start[1]);ctx.lineTo(xD,start[1]);ctx.moveTo(end[0],end[1]);ctx.lineTo(xD,end[1]);ctx.stroke();
+  ctx.fillStyle='#334155';ctx.font='11px Arial';ctx.fillText('All R, θ, Lb and D: Glass Bottom Surface basis',pad,H-16);ctx.restore();
+}
+function drawCorner(){const c=$('corner'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,c);const pad=46,sc=Math.min((W-2*pad)/(P.Rc+5),(H-2*pad)/(P.Rc+5)),cx=pad+P.Rc*sc,cy=H-pad,ro=P.Rc*sc,ri=P.Rf*sc;
+ctx.beginPath();ctx.arc(cx,cy,ro,Math.PI,1.5*Math.PI);ctx.lineTo(cx,cy-ri);ctx.arc(cx,cy,ri,1.5*Math.PI,Math.PI,true);ctx.closePath();ctx.fillStyle='rgba(148,163,184,.28)';ctx.fill();ctx.strokeStyle='#334155';ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(cx,cy,ro,Math.PI,1.5*Math.PI);ctx.stroke();
+ctx.setLineDash([6,5]);ctx.strokeStyle='#2563eb';ctx.lineWidth=1.7;ctx.beginPath();ctx.arc(cx,cy,ri,Math.PI,1.5*Math.PI);ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle='#2563eb';ctx.beginPath();ctx.arc(cx,cy,3.5,0,Math.PI*2);ctx.fill();const a=1.24*Math.PI,rx=cx+ri*Math.cos(a),ry=cy+ri*Math.sin(a);dimLine(ctx,cx,cy,rx,ry,`Rf ${P.Rf.toFixed(2)}`,'#2563eb');
+ctx.strokeStyle='#64748b';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-ro,cy);ctx.moveTo(cx,cy);ctx.lineTo(cx,cy-ro);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#111827';ctx.font='12px Arial';ctx.fillText(`Rc = ${P.Rc.toFixed(2)}`,cx-ro+4,cy-ro-10);ctx.fillStyle='#2563eb';ctx.fillText('Top-left corner enlargement · Rf: center → flat-radius arc',pad,20);const a2=1.25*Math.PI;dimLine(ctx,cx+ri*Math.cos(a2),cy+ri*Math.sin(a2),cx+ro*Math.cos(a2),cy+ro*Math.sin(a2),`Lb ${P.Lb.toFixed(2)}`,'#059669');ctx.restore()}
+function drawBorder(){
+  const c=$('border'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,c);
+  const pad=46,flatMm=4,totalT=P.t+P.OCA_T+P.PANEL_T;
+  const sc=Math.min((W-2*pad)/(flatMm+P.Lb+P.t+6),(H-2*pad)/(P.D+totalT+7)),ox=pad+flatMm*sc,oy=Math.max(95,H*.34);
+  const curve=(radius,a0,a1,n=160)=>{const a=[];for(let i=0;i<=n;i++){const u=a0+(a1-a0)*i/n;a.push([ox+radius*Math.sin(u)*sc,oy+(P.R-radius*Math.cos(u))*sc,u]);}return a;};
+  const band=(top,bottom,fill)=>{ctx.beginPath();ctx.moveTo(top[0][0],top[0][1]);for(const q of top.slice(1))ctx.lineTo(q[0],q[1]);for(let i=bottom.length-1;i>=0;i--)ctx.lineTo(bottom[i][0],bottom[i][1]);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle='rgba(51,65,85,.58)';ctx.lineWidth=.75;ctx.stroke();};
+  const gb=curve(P.R,0,P.theta),gt=curve(P.R+P.t,0,P.theta);
+  // OCA and Panel include the same left flat start as Glass in Border View.
+  // Their right curved ends still follow the arc-based Panel Size Offset.
+  const otCurve=curve(P.R,0,P.panelAlpha),obCurve=curve(P.R-P.OCA_T,0,P.panelAlpha);
+  const ptCurve=obCurve,pbCurve=curve(P.panelBottomRadius,0,P.panelAlpha);
+  const ot=[[pad,oy,0],...otCurve],ob=[[pad,oy+P.OCA_T*sc,0],...obCurve];
+  const pt=[[pad,oy+P.OCA_T*sc,0],...ptCurve],pb=[[pad,oy+(P.OCA_T+P.PANEL_T)*sc,0],...pbCurve];
+  ctx.beginPath();ctx.moveTo(pad,oy);ctx.lineTo(...gb[0]);for(const q of gb.slice(1))ctx.lineTo(q[0],q[1]);for(let i=gt.length-1;i>=0;i--)ctx.lineTo(gt[i][0],gt[i][1]);ctx.lineTo(pad,oy-P.t*sc);ctx.closePath();ctx.fillStyle='rgba(156,163,175,.34)';ctx.fill();ctx.strokeStyle='#475569';ctx.lineWidth=.8;ctx.stroke();
+  band(ot,ob,'rgba(125,211,252,.42)');band(pt,pb,'rgba(71,85,105,.72)');
+  // Dead Space is an in-panel black region only. No lower protruding marker/extension is drawn.
+  const deadTop=curve(P.panelTopRadius,P.deadAlpha,P.panelAlpha),deadBottom=curve(P.panelBottomRadius,P.deadAlpha,P.panelAlpha);band(deadTop,deadBottom,'rgba(0,0,0,.94)');
+
+  const gte=gt.at(-1),gbe=gb.at(-1),pbe=pb.at(-1),q=curve(P.panelBottomRadius,0,P.deadAlpha).at(-1);
+  const panelEdge=pt.at(-1),deadInner=deadTop[0];
+  const yPhys=oy-38;dimLine(ctx,q[0],yPhys,gte[0],yPhys,`Physical ${P.PhysicalBorder.toFixed(3)} mm`,'#2563eb');ctx.strokeStyle='#2563eb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0],yPhys);ctx.moveTo(gte[0],gte[1]);ctx.lineTo(gte[0],yPhys);ctx.stroke();
+  if(P.visibleValid){const v=[ox+P.visiblePoint.u*sc,oy-P.visiblePoint.z*sc];ctx.save();ctx.setLineDash([1.5,2]);ctx.lineWidth=.55;ctx.strokeStyle='#059669';ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(v[0],v[1]);ctx.stroke();ctx.restore();const yVis=yPhys-28;dimLine(ctx,v[0],yVis,gte[0],yVis,`Visible ${P.VisibleBorder.toFixed(3)} mm`,'#059669');ctx.beginPath();ctx.moveTo(v[0],v[1]);ctx.lineTo(v[0],yVis);ctx.moveTo(gte[0],gte[1]);ctx.lineTo(gte[0],yVis);ctx.stroke();}
+  else{ctx.fillStyle='#b91c1c';ctx.fillText('Visible Border: Glass Top normal intersection N/A',pad,55);}
+  ctx.font='11px Arial';
+  ctx.fillStyle='#475569';ctx.fillText(`Panel Offset: ${P.PO.toFixed(3)} mm (arc)   ·   Panel Dead Space: ${P.DS.toFixed(3)} mm (arc)`,pad,H-56);
+  ctx.fillStyle='#2563eb';ctx.fillText(`Physical: Panel-bottom dead-space inner point → Glass-top edge (u projection)`,pad,H-38);
+  ctx.fillStyle='#059669';ctx.fillText(`Visible: Glass-top normal intersection → Glass-top edge (u projection)`,pad,H-20);ctx.restore();
+}
+function update(){
+  const p=read(),e=errors(p),s=$('status');
+  if(e.length){s.className='status bad';s.innerHTML='<b>Input 확인 필요</b><br>'+e.join('<br>');return;}
+  P=p;s.className='status ok';
+  s.innerHTML='<b>Geometry valid</b><br>R, D, θ, Lb, Sb는 Glass Bottom Surface 기준입니다.<br>Panel Size Offset과 Dead Space는 Arc Length 기준입니다.<br>OCA Top = Glass Bottom, Panel Top = OCA Bottom입니다.<br>Physical/Visible Border는 u축(Top View) 직선 투영거리입니다.';
+  $('theta').textContent=(p.theta*180/Math.PI).toFixed(3)+'°';$('Lb').textContent=p.Lb.toFixed(3)+' mm';$('Sb').textContent=p.Sb.toFixed(3)+' mm';$('Rf').textContent=p.Rf.toFixed(3)+' mm';$('DR').textContent=p.DR.toFixed(2);$('Shrinkage').textContent=(p.Shrinkage*100).toFixed(3)+' %';$('PhysicalBorder').textContent=p.PhysicalBorder.toFixed(3)+' mm';$('VisibleBorder').textContent=p.visibleValid?p.VisibleBorder.toFixed(3)+' mm':'N/A';drawPreset();drawSection();drawCorner();drawBorder();
+}
+['presetView','section','corner','border'].forEach(id=>installNav($(id)));document.querySelectorAll('input').forEach(el=>el.addEventListener('input',update));window.addEventListener('resize',()=>{if(P){drawPreset();drawSection();drawCorner();drawBorder()}});update();
+</script>
+</body></html>

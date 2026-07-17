@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4-Side Curved Cover Glass Design Tool</title>
+    <link rel="stylesheet" href="./src/css/style.css">
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="app-header">
+        <div>
+          <h1>4-Side Curved Cover Glass Design Tool</h1>
+          <p>4-Side Curved Cover Glass Design</p>
+        </div>
+        <div class="header-actions">
+          <label class="toggle-line">
+            <input id="showDimensions" type="checkbox" checked>
+            Dimensions
+          </label>
+          <button id="resetViewButton" type="button">Reset All</button>
+          <button id="saveJsonButton" type="button">Save JSON</button>
+          <button id="loadJsonButton" type="button">Load JSON</button>
+          <button id="saveCsvButton" type="button">Save CSV</button>
+          <button id="saveSvgButton" type="button">Save SVGs</button>
+          <input id="jsonFileInput" class="visually-hidden" type="file" accept="application/json,.json">
+          <span id="statusBadge" class="status-badge">Ready</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar">
+          <section class="panel">
+            <h2>Input Parameters</h2>
+            <form id="inputForm" class="input-grid"></form>
+          </section>
+          <section class="panel">
+            <h2>Derived Parameters</h2>
+            <dl id="derivedList" class="derived-list"></dl>
+          </section>
+          <section class="panel">
+            <h2>Validation</h2>
+            <div id="validationMessages" class="validation-list"></div>
+          </section>
+        </aside>
+
+        <section class="view-grid">
+          <article class="view-card overall-view">
+            <h2>Overall Top View</h2>
+            <svg id="overallTopView" role="img" aria-label="Overall top view"></svg>
+          </article>
+          <div class="right-views">
+            <div class="top-right-views">
+              <article class="view-card">
+                <h2>Corner Side View</h2>
+                <svg id="cornerSideView" role="img" aria-label="Corner side view"></svg>
+              </article>
+              <article class="view-card">
+                <h2>Corner Top View</h2>
+                <svg id="cornerTopView" role="img" aria-label="Corner top view"></svg>
+              </article>
+            </div>
+            <article class="view-card border-view">
+              <h2>Border View</h2>
+              <svg id="borderView" role="img" aria-label="Border view"></svg>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./src/js/app.js"></script>
+  </body>
+</html>
