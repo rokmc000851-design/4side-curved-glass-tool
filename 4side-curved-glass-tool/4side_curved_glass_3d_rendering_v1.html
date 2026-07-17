@@ -40,7 +40,7 @@ main{padding:10px;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-
 <div class="canvas-wrap"><canvas id="presetView"></canvas></div><div class="hint">왼쪽 드래그: 회전 · Shift+왼쪽 또는 오른쪽 드래그: X/Y 이동 · 휠: 확대/축소 · 더블클릭: 초기화</div></section>
 </main></div>
 <script>
-'use strict'; const $=id=>document.getElementById(id); let P;
+'use strict'; const $=id=>document.getElementById(id); let P,stackGeometryValid=true;
 const viewState={presetView:{zoom:1,panX:0,panY:0},section:{zoom:1,panX:0,panY:0},corner:{zoom:1,panX:0,panY:0},border:{zoom:1,panX:0,panY:0}};
 function applyViewTransform(ctx,c){const v=viewState[c.id];const W=c.clientWidth,H=c.clientHeight;ctx.translate(W/2+v.panX,H/2+v.panY);ctx.scale(v.zoom,v.zoom);ctx.translate(-W/2,-H/2)}
 function redrawCanvas(id){if(!P)return;if(id==='presetView')drawPreset();else if(id==='section')drawSection();else if(id==='corner')drawCorner();else drawBorder()}
@@ -194,7 +194,7 @@ function roundedRectSdf(x,y,width,height,radius){const hx=width/2,hy=height/2,r=
 function bendTravel(x,y,width,height,radius){const flatWidth=Math.max(.001,width-2*P.Lb),flatHeight=Math.max(.001,height-2*P.Lb),flatRadius=Math.max(0,radius-P.Lb);return Math.max(0,Math.min(P.Lb,roundedRectSdf(x,y,flatWidth,flatHeight,flatRadius)))}
 function surfaceZ(x,y,width,height,radius,zOffset){const travel=bendTravel(x,y,width,height,radius),alpha=Math.asin(Math.min(1,travel/P.R));return-P.R*(1-Math.cos(alpha))+zOffset}
 const layerControlIds={Glass:'showGlass',OCA:'showOCA',Panel:'showPanel'},layerBaseAlpha={Glass:1,OCA:.88,Panel:1};
-function layerVisible(name){const control=$(layerControlIds[name]);return!control||control.checked}
+function layerVisible(name){if(name!=='Glass'&&!stackGeometryValid)return false;const control=$(layerControlIds[name]);return!control||control.checked}
 function layerOpacity(name){return layerBaseAlpha[name]*Number($('layerOpacity')?.value||1)}
 function layerOffsets(name){if(name==='Glass')return{top:P.t,bottom:0};if(name==='OCA')return{top:0,bottom:-P.OCA_T};return{top:-P.OCA_T,bottom:-P.OCA_T-P.PANEL_T}}
 function buildSurfaceGrid(layer,zOffset,reverse=false){const width=Math.max(2,P.X-layer.inset*2),height=Math.max(2,P.Y-layer.inset*2),radius=Math.max(0,P.Rc-layer.inset),nx=Math.max(22,Math.min(40,Math.ceil(width/3))),ny=Math.max(36,Math.min(68,Math.ceil(height/3))),vertices=[],triangles=[];for(let j=0;j<=ny;j++){const row=[];for(let i=0;i<=nx;i++){const x=-width/2+width*i/nx,y=-height/2+height*j/ny;row.push(roundedRectContains(x,y,width,height,radius)?{x,y,z:surfaceZ(x,y,width,height,radius,zOffset)}:null)}vertices.push(row)}for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const a=vertices[j][i],b=vertices[j][i+1],c=vertices[j+1][i+1],d=vertices[j+1][i];if(a&&b&&c)triangles.push({p:reverse?[c,b,a]:[a,b,c],layer,surface:reverse?'bottom':'top'});if(a&&c&&d)triangles.push({p:reverse?[d,c,a]:[a,c,d],layer,surface:reverse?'bottom':'top'})}return triangles}
@@ -238,6 +238,7 @@ function renderPreset(){
 }
 let pending3DFrame=0;
 function drawPreset(){cancelAnimationFrame(pending3DFrame);pending3DFrame=requestAnimationFrame(()=>{pending3DFrame=0;const c=$('presetView');if(!c||c.clientWidth<10||c.clientHeight<10)return;try{renderPreset()}catch(error){console.error('3D rendering failed:',error);const ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,W,H);ctx.fillStyle='#b91c1c';ctx.font='bold 15px Arial';ctx.fillText('3D rendering error',24,42);ctx.font='12px Consolas,monospace';ctx.fillText(String(error?.message||error).slice(0,120),24,66)}})}
+function show3DMessage(title,detail){cancelAnimationFrame(pending3DFrame);const c=$('presetView'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,W,H);ctx.fillStyle='#b91c1c';ctx.font='bold 16px Arial';ctx.fillText(title,28,48);ctx.fillStyle='#64748b';ctx.font='13px Arial';ctx.fillText(detail,28,74)}
 function dimLine(ctx,x1,y1,x2,y2,text,color='#2563eb'){ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();const a=Math.atan2(y2-y1,x2-x1),s=7;for(const [x,y,d] of [[x1,y1,1],[x2,y2,-1]]){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+d*s*Math.cos(a+2.5),y+d*s*Math.sin(a+2.5));ctx.lineTo(x+d*s*Math.cos(a-2.5),y+d*s*Math.sin(a-2.5));ctx.closePath();ctx.fill()}ctx.font='12px Arial';ctx.fillText(text,(x1+x2)/2+6,(y1+y2)/2-6);ctx.restore()}
 function sectionPoints(P,sc,ox,oy,alphaMax=P.theta,radius=P.R){const pts=[];for(let i=0;i<=120;i++){const a=alphaMax*i/120;pts.push([ox+radius*Math.sin(a)*sc,oy+radius*(1-Math.cos(a))*sc,a])}return pts}
 function drawSection(){
@@ -302,10 +303,14 @@ function drawBorder(){
 }
 function update(){
   const p=read(),e=errors(p),s=$('status');
-  if(e.length){s.className='status bad';s.innerHTML='<b>Input 확인 필요</b><br>'+e.join('<br>');return;}
-  P=p;s.className='status ok';
-  s.innerHTML='<b>Geometry valid</b><br>R, D, θ, Lb, Sb는 Glass Bottom Surface 기준입니다.<br>Panel Size Offset과 Dead Space는 Arc Length 기준입니다.<br>OCA Top = Glass Bottom, Panel Top = OCA Bottom입니다.<br>Physical/Visible Border는 u축(Top View) 직선 투영거리입니다.';
-  $('theta').textContent=(p.theta*180/Math.PI).toFixed(3)+'°';$('Lb').textContent=p.Lb.toFixed(3)+' mm';$('Sb').textContent=p.Sb.toFixed(3)+' mm';$('Rf').textContent=p.Rf.toFixed(3)+' mm';$('DR').textContent=p.DR.toFixed(2);$('Shrinkage').textContent=(p.Shrinkage*100).toFixed(3)+' %';$('PhysicalBorder').textContent=p.PhysicalBorder.toFixed(3)+' mm';$('VisibleBorder').textContent=p.visibleValid?p.VisibleBorder.toFixed(3)+' mm':'N/A';drawPreset();
+  const coreRenderable=[p.X,p.Y,p.t,p.R,p.D,p.Rc,p.Lb,p.Rf].every(Number.isFinite)&&p.X>0&&p.Y>0&&p.t>=0&&p.R>0&&p.D>=0&&p.D<=2*p.R&&p.Rf>=0;
+  stackGeometryValid=e.length===0;
+  if(e.length){s.className='status bad';s.innerHTML='<b>Input 확인 필요</b><br>'+e.join('<br>')+(coreRenderable?'<br><b>Glass만 계속 표시합니다.</b>':'');}
+  else{s.className='status ok';s.innerHTML='<b>Geometry valid</b><br>R, D, θ, Lb, Sb는 Glass Bottom Surface 기준입니다.<br>Panel Size Offset과 Dead Space는 Arc Length 기준입니다.<br>OCA Top = Glass Bottom, Panel Top = OCA Bottom입니다.<br>Physical/Visible Border는 u축(Top View) 직선 투영거리입니다.';}
+  const value=(number,digits=3,suffix='')=>Number.isFinite(number)?number.toFixed(digits)+suffix:'-';
+  $('theta').textContent=value(p.theta*180/Math.PI,3,'°');$('Lb').textContent=value(p.Lb,3,' mm');$('Sb').textContent=value(p.Sb,3,' mm');$('Rf').textContent=value(p.Rf,3,' mm');$('DR').textContent=value(p.DR,2);$('Shrinkage').textContent=value(p.Shrinkage*100,3,' %');$('PhysicalBorder').textContent=value(p.PhysicalBorder,3,' mm');$('VisibleBorder').textContent=p.visibleValid?value(p.VisibleBorder,3,' mm'):'N/A';
+  if(!coreRenderable){P=null;show3DMessage('Glass geometry cannot be rendered','Check X, Y, t, R, D and Rc values.');return}
+  P=p;drawPreset();
 }
 const SHARED_INPUT_KEY='four-side-curved-display:shared-inputs:v1';
 const SHARED_INPUT_IDS=['X','Y','t','R','D','Rc','PO','DS','OCA_T','PANEL_T'];
