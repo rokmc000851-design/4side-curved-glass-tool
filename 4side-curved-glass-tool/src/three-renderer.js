@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { buildGlassGeometry, makeGlassParams } from './glass-geometry.js';
 
 const $ = id => document.getElementById(id);
 const INPUT_IDS = ['X','Y','t','R','D','Rc','PO','DS','OCA_T','PANEL_T'];
@@ -10,14 +10,10 @@ const canvas = $('presetView');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false, powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = .9;
+renderer.toneMapping = THREE.NoToneMapping;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xe8edf3);
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-pmrem.dispose();
+scene.background = new THREE.Color(0x101418);
 
 const camera = new THREE.OrthographicCamera(-100,100,100,-100,0.1,1000);
 camera.position.set(0,0,250);
@@ -35,10 +31,9 @@ controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
 controls.touches.ONE = THREE.TOUCH.ROTATE;
 controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
 
-scene.add(new THREE.HemisphereLight(0xffffff,0x94a3b8,.62));
-const key = new THREE.DirectionalLight(0xfffdf8,.72); key.position.set(-80,110,160); scene.add(key);
-const rim = new THREE.DirectionalLight(0xbdd7f4,.28); rim.position.set(120,-40,90); scene.add(rim);
-const fill = new THREE.DirectionalLight(0xffffff,.2); fill.position.set(-100,-120,50); scene.add(fill);
+scene.add(new THREE.AmbientLight(0x8ea8b8,1.4));
+const key = new THREE.DirectionalLight(0xffffff,2.4); key.position.set(90,-80,140); scene.add(key);
+const fill = new THREE.DirectionalLight(0x9ed9ff,.9); fill.position.set(-80,90,70); scene.add(fill);
 
 const modelRoot = new THREE.Group();
 scene.add(modelRoot);
@@ -143,7 +138,7 @@ function materials(p){
   const setting=name=>({color:$(name+'Color').value,opacity:Number($(name+'Opacity').value)});
   const glass=setting('glass'),oca=setting('oca'),panel=setting('panel');
   return{
-    Glass:new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.1,metalness:0,transmission:.9,thickness:Math.max(.01,p.t),attenuationColor:new THREE.Color(glass.color),attenuationDistance:Math.max(8,p.t*30),ior:1.5,clearcoat:.28,clearcoatRoughness:.08,reflectivity:.48,specularIntensity:.5,specularColor:0xffffff,transparent:glass.opacity<1,opacity:glass.opacity,side:THREE.FrontSide,depthWrite:true,envMapIntensity:.9}),
+    Glass:new THREE.MeshPhysicalMaterial({color:glass.color,roughness:.16,metalness:0,transmission:.34,thickness:Math.max(.01,p.t),ior:1.5,clearcoat:.75,clearcoatRoughness:.18,transparent:true,opacity:glass.opacity,side:THREE.DoubleSide,depthWrite:false}),
     OCA:new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.16,metalness:0,transmission:.82,thickness:Math.max(.01,p.OCA_T),attenuationColor:new THREE.Color(oca.color),attenuationDistance:10,ior:1.47,transparent:oca.opacity<1,opacity:oca.opacity,side:THREE.FrontSide,depthWrite:oca.opacity>.92,envMapIntensity:.5}),
     Panel:new THREE.MeshStandardMaterial({color:panel.color,roughness:.42,metalness:.05,transparent:panel.opacity<1,opacity:panel.opacity,side:THREE.FrontSide,depthWrite:panel.opacity>.92})
   };
@@ -164,7 +159,12 @@ function rebuildModel(){
   for(const def of defs){
     if(def.name!=='Glass'&&!stackValid)continue;
     if(!$('show'+def.name).checked)continue;
-    const mesh=new THREE.Mesh(buildClosedLayer(params,def),mats[def.name]);
+    let geometry;
+    if(def.name==='Glass'){
+      geometry=buildGlassGeometry(makeGlassParams({width:params.X,height:params.Y,thickness:params.t,bendRadius:params.R,bendDepth:params.D,cornerRadius:params.Rc,detail:2}));
+      geometry.translate(0,0,params.t/2);
+    }else geometry=buildClosedLayer(params,def);
+    const mesh=new THREE.Mesh(geometry,mats[def.name]);
     mesh.name=def.name; mesh.renderOrder=def.name==='Glass'?3:def.name==='OCA'?2:1; modelRoot.add(mesh);
   }
 }
@@ -172,8 +172,8 @@ function rebuildModel(){
 function updateGrid(){
   if(grid){scene.remove(grid);grid.geometry.dispose();grid.material.dispose()}
   const size=Math.ceil(Math.max(params.X,params.Y)/20)*40;
-  grid=new THREE.GridHelper(size,Math.max(12,Math.round(size/10)),0x9aa9ba,0xcbd5e1);
-  grid.rotation.x=Math.PI/2; grid.position.z=-params.D-4; grid.material.transparent=true;grid.material.opacity=.52;scene.add(grid);
+  grid=new THREE.GridHelper(size,Math.max(12,Math.round(size/10)),0x46525c,0x273139);
+  grid.rotation.x=Math.PI/2; grid.position.z=-Math.max(18,params.D+4); grid.material.transparent=true;grid.material.opacity=.7;scene.add(grid);
 }
 
 function fitCamera(reset=true){
@@ -231,7 +231,7 @@ function update(){
   updateOutputs(p);
   if(validation.core.length){status.className='status bad';status.innerHTML='<b>Input 확인 필요</b><br>'+validation.core.join('<br>');params=null;showMessage('Glass geometry cannot be rendered','X, Y, t, R, D, Rc 값을 확인하세요.');return}
   params=p;stackValid=validation.stack.length===0;
-  if(stackValid){status.className='status ok';status.innerHTML='<b>Geometry valid</b><br>Three.js Parametric Surface · Smooth vertex normals<br>Glass / OCA / Panel normal-offset layers';}
+  if(stackValid){status.className='status ok';status.innerHTML='<b>Geometry valid</b><br>Unified rounded-ring Glass topology<br>Glass / OCA / Panel normal-offset layers';}
   else{status.className='status bad';status.innerHTML='<b>Input 확인 필요</b><br>'+validation.stack.join('<br>')+'<br><b>Glass만 계속 표시합니다.</b>';}
   clearMessage();rebuildModel();updateGrid();fitCamera(false);
 }
