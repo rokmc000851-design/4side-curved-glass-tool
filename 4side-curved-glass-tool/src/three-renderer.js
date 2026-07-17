@@ -11,10 +11,10 @@ const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false, p
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = .72;
+renderer.toneMappingExposure = .9;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xd7e0ea);
+scene.background = new THREE.Color(0xe8edf3);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 pmrem.dispose();
@@ -35,10 +35,10 @@ controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
 controls.touches.ONE = THREE.TOUCH.ROTATE;
 controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
 
-scene.add(new THREE.HemisphereLight(0xffffff,0x64748b,.85));
-const key = new THREE.DirectionalLight(0xfffdf8,1.35); key.position.set(-80,110,160); scene.add(key);
-const rim = new THREE.DirectionalLight(0x9ec5ff,.7); rim.position.set(120,-40,90); scene.add(rim);
-const fill = new THREE.DirectionalLight(0xffffff,.45); fill.position.set(-100,-120,50); scene.add(fill);
+scene.add(new THREE.HemisphereLight(0xffffff,0x94a3b8,.62));
+const key = new THREE.DirectionalLight(0xfffdf8,.72); key.position.set(-80,110,160); scene.add(key);
+const rim = new THREE.DirectionalLight(0xbdd7f4,.28); rim.position.set(120,-40,90); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffffff,.2); fill.position.set(-100,-120,50); scene.add(fill);
 
 const modelRoot = new THREE.Group();
 scene.add(modelRoot);
@@ -143,8 +143,8 @@ function materials(p){
   const setting=name=>({color:$(name+'Color').value,opacity:Number($(name+'Opacity').value)});
   const glass=setting('glass'),oca=setting('oca'),panel=setting('panel');
   return{
-    Glass:new THREE.MeshPhysicalMaterial({color:glass.color,emissive:glass.color,emissiveIntensity:.28,roughness:.34,metalness:0,transmission:.04,thickness:Math.max(.01,p.t),ior:1.5,clearcoat:.5,clearcoatRoughness:.22,reflectivity:.38,specularIntensity:.34,specularColor:0xbcd0e5,transparent:glass.opacity<1,opacity:glass.opacity,side:THREE.FrontSide,depthWrite:true,envMapIntensity:.42}),
-    OCA:new THREE.MeshPhysicalMaterial({color:oca.color,roughness:.3,metalness:0,transmission:.28,thickness:Math.max(.01,p.OCA_T),ior:1.47,transparent:oca.opacity<1,opacity:oca.opacity,side:THREE.FrontSide,depthWrite:oca.opacity>.92,envMapIntensity:.55}),
+    Glass:new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.1,metalness:0,transmission:.9,thickness:Math.max(.01,p.t),attenuationColor:new THREE.Color(glass.color),attenuationDistance:Math.max(8,p.t*30),ior:1.5,clearcoat:.28,clearcoatRoughness:.08,reflectivity:.48,specularIntensity:.5,specularColor:0xffffff,transparent:glass.opacity<1,opacity:glass.opacity,side:THREE.FrontSide,depthWrite:true,envMapIntensity:.9}),
+    OCA:new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.16,metalness:0,transmission:.82,thickness:Math.max(.01,p.OCA_T),attenuationColor:new THREE.Color(oca.color),attenuationDistance:10,ior:1.47,transparent:oca.opacity<1,opacity:oca.opacity,side:THREE.FrontSide,depthWrite:oca.opacity>.92,envMapIntensity:.5}),
     Panel:new THREE.MeshStandardMaterial({color:panel.color,roughness:.42,metalness:.05,transparent:panel.opacity<1,opacity:panel.opacity,side:THREE.FrontSide,depthWrite:panel.opacity>.92})
   };
 }
