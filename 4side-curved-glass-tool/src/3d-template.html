@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>4-Side Curved Display — 3D Rendering</title>
+<style>
+:root{--bg:#eef2f7;--panel:#fff;--line:#cbd5e1;--text:#162033;--muted:#64748b;--accent:#2563eb;--bad:#dc2626;--good:#059669}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text)}
+header{height:54px;padding:9px 180px 9px 14px;background:#fff;border-bottom:1px solid var(--line);overflow:hidden;position:relative} h1{font-size:17px;margin:0;line-height:21px}.sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tab-link{position:absolute;right:14px;top:10px;padding:8px 12px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none;font-size:12px;font-weight:700}
+.app{display:grid;grid-template-columns:clamp(245px,22vw,320px) minmax(0,1fr);height:calc(100vh - 54px);min-height:0;overflow:hidden} aside{padding:10px;border-right:1px solid var(--line);background:#f8fafc;overflow:auto;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.05)} .pad{padding:10px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px} label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
+input{width:100%;padding:6px;border-radius:8px;border:1px solid #b8c2d0;background:#fff;color:#111827} button{border:1px solid #b8c2d0;background:#fff;color:#1e293b;border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:600}
+button.active,.primary{background:var(--accent);border-color:var(--accent);color:#fff}.row{display:flex;gap:8px;margin-top:9px}.row>*{flex:1}
+.status{margin-top:7px;padding:7px;border-radius:8px;background:#f8fafc;font-size:12px;line-height:1.45}.ok{border-left:3px solid var(--good)}.bad{border-left:3px solid var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-top:7px}td{padding:5px 3px;border-bottom:1px solid #e2e8f0}td:last-child{text-align:right;font-family:Consolas,monospace}
+main{padding:10px;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0;min-height:0;overflow:hidden}.card-title{padding:7px 9px;border-bottom:1px solid var(--line);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}.layer-controls{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:500;color:#475569}.layer-controls label{display:flex;align-items:center;gap:4px;margin:0;white-space:nowrap}.layer-controls input{width:auto;padding:0}.layer-controls input[type=range]{width:82px}
+.viewer{display:flex;flex-direction:column;min-height:0;height:100%}.canvas-wrap{flex:1;min-height:0;background:linear-gradient(180deg,#fafafa,#e9eef5)}
+#presetView{width:100%;height:100%;display:block}.right-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,.82fr) minmax(0,1fr);gap:10px;min-height:0;height:100%}.right-grid .card{display:flex;flex-direction:column;min-height:0}.right-grid .border-card{grid-column:1 / 3}.view{width:100%;height:100%;min-height:0;flex:1;display:block;background:#fff}
+.hint{font-size:11px;color:var(--muted);padding:7px 10px;border-top:1px solid var(--line)}
+@media(max-width:1050px){.app{grid-template-columns:250px minmax(0,1fr)}main{padding:7px;gap:7px;grid-template-columns:minmax(0,1fr)}.card-title{font-size:12px}.hint{font-size:10px;padding:5px 7px}.layer-controls{gap:6px}.layer-controls input[type=range]{width:60px}}
+@media(max-height:760px){header{height:46px;padding:5px 12px}.app{height:calc(100vh - 46px)}aside{padding:7px}.fields{gap:5px;margin-top:6px}label{font-size:10px;margin-bottom:2px}input{padding:4px 6px}.status{font-size:10px;line-height:1.25;margin-top:5px;padding:5px}table{font-size:10px;margin-top:5px}td{padding:3px 2px}.card-title{padding:5px 7px}.hint{padding:4px 6px}}
+@media(max-width:760px){body{min-width:720px}}
+</style>
+</head>
+<body>
+<header><h1>4-Side Curved Display — 3D Rendering</h1><div class="sub">Geometry 탭과 Input Parameters 실시간 공유 · Drag 회전 · Wheel 확대/축소 · Double-click 초기화</div><a class="tab-link" href="4side_curved_glass_design_tool_standalone_v20.html" target="_blank" rel="noopener">Open 2D Geometry</a></header>
+<div class="app">
+<aside><div class="card pad"><b>Input Parameters (mm)</b><div class="fields">
+<div><label>X — X Size</label><input id="X" type="number" value="75" step="1"></div><div><label>Y — Y Size</label><input id="Y" type="number" value="160" step="1"></div>
+<div><label>t — Thickness</label><input id="t" type="number" value="0.5" step="0.1"></div><div><label>R — Bending R</label><input id="R" type="number" value="10" step="0.5"></div>
+<div><label>D — Bending Depth</label><input id="D" type="number" value="1" step="0.1"></div><div><label>Rc — Corner Round R</label><input id="Rc" type="number" value="10" step="0.5"></div>
+<div><label>Panel Size Offset — Arc Length</label><input id="PO" type="number" value="0.1" step="0.05"></div><div><label>Panel Dead Space — Arc Length</label><input id="DS" type="number" value="0.3" step="0.05"></div>
+<div><label>OCA Thickness</label><input id="OCA_T" type="number" value="0.1" step="0.01"></div><div><label>Panel Thickness</label><input id="PANEL_T" type="number" value="0.1" step="0.01"></div></div>
+<div id="status" class="status ok"></div>
+<table><tr><td colspan="2" style="text-align:left;color:#64748b;font-family:Arial,sans-serif"><b>All bending dimensions: Glass Bottom Surface basis</b></td></tr><tr><td>θ — Bending Angle</td><td id="theta">-</td></tr><tr><td>Lb — Bending Length</td><td id="Lb">-</td></tr><tr><td>Sb — Arc Length</td><td id="Sb">-</td></tr><tr><td>Rf — Flat Corner R</td><td id="Rf">-</td></tr><tr><td>D/R (H/R) — Depth / Bending R</td><td id="DR">-</td></tr><tr><td>Shrinkage — Corner Compression</td><td id="Shrinkage">-</td></tr><tr><td>Physical Border</td><td id="PhysicalBorder">-</td></tr><tr><td>Visible Border</td><td id="VisibleBorder">-</td></tr></table>
+</div></aside>
+<main>
+<section class="card viewer"><div class="card-title"><span>3D Rendering View</span><div class="layer-controls"><label><input id="showGlass" type="checkbox" checked>Glass</label><label><input id="showOCA" type="checkbox">OCA</label><label><input id="showPanel" type="checkbox">Panel</label><label>Opacity <input id="layerOpacity" type="range" min="0.2" max="1" step="0.05" value="1"></label></div></div>
+<div class="canvas-wrap"><canvas id="presetView"></canvas></div><div class="hint">왼쪽 드래그: 회전 · Shift+왼쪽 또는 오른쪽 드래그: X/Y 이동 · 휠: 확대/축소 · 더블클릭: 초기화</div></section>
+</main></div>
+<script>
+'use strict'; const $=id=>document.getElementById(id); let P,stackGeometryValid=true;
+const viewState={presetView:{zoom:1,panX:0,panY:0},section:{zoom:1,panX:0,panY:0},corner:{zoom:1,panX:0,panY:0},border:{zoom:1,panX:0,panY:0}};
+function applyViewTransform(ctx,c){const v=viewState[c.id];const W=c.clientWidth,H=c.clientHeight;ctx.translate(W/2+v.panX,H/2+v.panY);ctx.scale(v.zoom,v.zoom);ctx.translate(-W/2,-H/2)}
+function redrawCanvas(id){if(!P)return;if(id==='presetView')drawPreset();else if(id==='section')drawSection();else if(id==='corner')drawCorner();else drawBorder()}
+function installNav(c){if(c.id==='presetView'){install3DNav(c);return}let dragging=false,lastX=0,lastY=0;c.style.cursor='grab';c.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;c.setPointerCapture(e.pointerId);c.style.cursor='grabbing'});c.addEventListener('pointermove',e=>{if(!dragging)return;const v=viewState[c.id];v.panX+=e.clientX-lastX;v.panY+=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;redrawCanvas(c.id)});const stop=e=>{dragging=false;c.style.cursor='grab';try{c.releasePointerCapture(e.pointerId)}catch(_){}};c.addEventListener('pointerup',stop);c.addEventListener('pointercancel',stop);c.addEventListener('wheel',e=>{e.preventDefault();const v=viewState[c.id],r=c.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;const old=v.zoom,f=Math.exp(-e.deltaY*.0012),next=Math.max(.35,Math.min(8,old*f));v.panX=(mx-c.clientWidth/2)-(mx-c.clientWidth/2-v.panX)*(next/old);v.panY=(my-c.clientHeight/2)-(my-c.clientHeight/2-v.panY)*(next/old);v.zoom=next;redrawCanvas(c.id)},{passive:false});c.addEventListener('dblclick',()=>{viewState[c.id]={zoom:1,panX:0,panY:0};redrawCanvas(c.id)})}
+function read(){
+  const p={};
+  for(const k of ['X','Y','t','R','D','Rc','PO','DS','OCA_T','PANEL_T']) p[k]=Number($(k).value);
+  p.theta=Math.acos(1-p.D/p.R);
+  p.Lb=Math.sqrt(Math.max(0,2*p.R*p.D-p.D*p.D));
+  p.Sb=p.R*p.theta;
+  p.Rf=p.Rc-p.Lb;
+  p.DR=p.R>0?p.D/p.R:NaN;
+  p.Shrinkage=p.Sb>0?(p.Sb-p.Lb)/p.Sb:0;
+
+  // Arc-length definitions on the common bending angle coordinate.
+  p.panelAlpha=p.theta-p.PO/p.R;
+  p.deadAlpha=p.panelAlpha-p.DS/p.R;
+  p.panelTopRadius=p.R-p.OCA_T;
+  p.panelBottomRadius=p.panelTopRadius-p.PANEL_T;
+
+  const point=(radius,a)=>({u:radius*Math.sin(a),z:-p.R+radius*Math.cos(a)});
+  p.glassBottomEnd=point(p.R,p.theta);
+  p.glassTopEnd=point(p.R+p.t,p.theta);
+  p.panelBottomDead=point(p.panelBottomRadius,p.deadAlpha);
+  p.PhysicalBorder=Math.abs(p.glassTopEnd.u-p.panelBottomDead.u);
+
+  // Visible-border construction (v18):
+  // Q = Panel Bottom at the inner boundary of Panel Dead Space.
+  // V = intersection of the Glass Top surface with the Glass Top local normal passing through Q.
+  // Because all stack surfaces are concentric normal offsets, Q and V share the same alpha.
+  // Visible Border is the top-view/u-axis straight projection from V to the Glass Top bending end.
+  const q=p.panelBottomDead, rt=p.R+p.t;
+  p.visibleAlpha=p.deadAlpha;
+  p.visibleValid=Number.isFinite(p.visibleAlpha) && p.visibleAlpha>=0 && p.visibleAlpha<=p.theta;
+  if(p.visibleValid){
+    p.visiblePoint=point(rt,p.visibleAlpha);
+    p.VisibleBorder=Math.abs(p.glassTopEnd.u-p.visiblePoint.u);
+  }else{
+    p.visiblePoint=null;
+    p.VisibleBorder=NaN;
+  }
+  return p;
+}
+function errors(p){
+  const e=[];
+  for(const k of ['X','Y','t','R','Rc']) if(!isFinite(p[k])||p[k]<=0) e.push(k+'는 0보다 커야 합니다.');
+  if(!isFinite(p.D)||p.D<0||p.D>=2*p.R) e.push('D는 0 이상 2R 미만이어야 합니다.');
+  if(!isFinite(p.PO)||p.PO<0) e.push('Panel Size Offset은 0 이상이어야 합니다.');
+  if(!isFinite(p.DS)||p.DS<0) e.push('Panel Dead Space는 0 이상이어야 합니다.');
+  if(!isFinite(p.OCA_T)||p.OCA_T<=0) e.push('OCA Thickness는 0보다 커야 합니다.');
+  if(!isFinite(p.PANEL_T)||p.PANEL_T<=0) e.push('Panel Thickness는 0보다 커야 합니다.');
+  if(p.OCA_T+p.PANEL_T>=p.R) e.push('OCA + Panel 두께 합은 Bending R보다 작아야 합니다.');
+  if(p.Rf<0) e.push('Rf = Rc − Lb가 음수입니다.');
+  if(2*p.Lb>=Math.min(p.X,p.Y)) e.push('Lb가 너무 커 Flat 영역이 사라집니다.');
+  if(p.Rc>Math.min(p.X,p.Y)/2) e.push('Rc가 Glass 크기에 비해 너무 큽니다.');
+  if(p.PO>p.Sb) e.push('Panel Size Offset은 Glass Arc Length Sb 이하여야 합니다.');
+  if(p.panelAlpha<0) e.push('Panel Size Offset으로 Panel 끝단이 Bending 시작점 안쪽을 벗어났습니다.');
+  if(p.DS>p.R*Math.max(0,p.panelAlpha)) e.push('Panel Dead Space가 Panel의 사용 가능한 Bending Arc보다 큽니다.');
+  if(p.deadAlpha<0) e.push('Panel Dead Space 내측 경계가 Bending 시작점 안쪽을 벗어났습니다.');
+  return e;
+}
+function ctx2(c){const d=devicePixelRatio||1,w=Math.max(1,Math.round(c.clientWidth*d)),h=Math.max(1,Math.round(c.clientHeight*d));if(c.width!==w||c.height!==h){c.width=w;c.height=h}const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);return x}
+function roundRectPath(ctx,x,y,w,h,r){r=Math.max(0,Math.min(r,w/2,h/2));ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
+function glassGradient(ctx,x,y,w,h){const g=ctx.createLinearGradient(x,y,x+w*.85,y+h);g.addColorStop(0,'rgba(225,229,233,.72)');g.addColorStop(.24,'rgba(178,186,194,.52)');g.addColorStop(.48,'rgba(210,216,222,.62)');g.addColorStop(.72,'rgba(145,154,164,.48)');g.addColorStop(1,'rgba(205,211,217,.70)');return g}
+function drawTopGlass(ctx,x,y,w,h,r,inset){
+  ctx.save();ctx.shadowColor='rgba(15,23,42,.18)';ctx.shadowBlur=14;ctx.shadowOffsetY=6;
+  roundRectPath(ctx,x,y,w,h,r);ctx.fillStyle=glassGradient(ctx,x,y,w,h);ctx.fill();ctx.restore();
+  roundRectPath(ctx,x,y,w,h,r);ctx.strokeStyle='rgba(51,65,85,.58)';ctx.lineWidth=.8;ctx.stroke();
+  roundRectPath(ctx,x+inset,y+inset,w-2*inset,h-2*inset,Math.max(0,r-inset));ctx.setLineDash([]);ctx.strokeStyle='rgba(100,116,139,.62)';ctx.lineWidth=.65;ctx.stroke();
+  // angle-aware reflection: soft curved bands only
+  ctx.save();roundRectPath(ctx,x,y,w,h,r);ctx.clip();
+  const rg=ctx.createRadialGradient(x+w*.18,y+h*.10,2,x+w*.18,y+h*.10,Math.max(w,h)*.72);rg.addColorStop(0,'rgba(255,255,255,.34)');rg.addColorStop(.20,'rgba(255,255,255,.12)');rg.addColorStop(.58,'rgba(255,255,255,0)');ctx.fillStyle=rg;ctx.fillRect(x,y,w,h);
+  const eg=ctx.createLinearGradient(x,y,x+inset*1.7,y+inset*1.7);eg.addColorStop(0,'rgba(255,255,255,.22)');eg.addColorStop(.45,'rgba(255,255,255,.05)');eg.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=eg;ctx.fillRect(x,y,w,h);
+  ctx.restore();
+}
+function drawFullTop(ctx,W,H){ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,$('presetView'));const pad=42,sc=Math.min((W-2*pad)/P.X,(H-2*pad)/P.Y);const w=P.X*sc,h=P.Y*sc,x=(W-w)/2,y=(H-h)/2,r=P.Rc*sc,inset=Math.max(1,P.Lb*sc);drawTopGlass(ctx,x,y,w,h,r,inset);ctx.fillStyle='#334155';ctx.font='12px Arial';ctx.fillText(`X = ${P.X.toFixed(1)} mm`,x+w/2-35,y+h+25);ctx.save();ctx.translate(x-25,y+h/2+30);ctx.rotate(-Math.PI/2);ctx.fillText(`Y = ${P.Y.toFixed(1)} mm`,0,0);ctx.restore();ctx.restore()}
+function drawCornerTopPreset(ctx,W,H){ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,$('presetView'));const margin=28,crop=Math.min(P.X,P.Y)*.38,sc=Math.min((W-2*margin)/crop,(H-2*margin)/crop);const fullW=P.X*sc,fullH=P.Y*sc;const x=W-margin-fullW,y=margin;drawTopGlass(ctx,x,y,fullW,fullH,P.Rc*sc,P.Lb*sc);ctx.fillStyle='rgba(255,255,255,.72)';ctx.fillRect(0,0,Math.max(0,x),H);ctx.fillRect(0,0,W,margin*.45);ctx.fillStyle='#334155';ctx.font='12px Arial';ctx.fillText(`Rc = ${P.Rc.toFixed(2)} mm`,W-150,24);ctx.fillText(`Rf = ${P.Rf.toFixed(2)} mm`,W-150,42);ctx.restore()}
+function drawCornerSide(ctx,W,H){
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  applyViewTransform(ctx,$('presetView'));
+
+  // Corner Side preset is intentionally rendered as a 2D bending cross-section.
+  // Geometry and end-face direction are identical to the Bending Section view.
+  const pad=42;
+  const flatMm=Math.max(3,Math.min(10,P.Lb*.8));
+  const sc=Math.min(
+    (W-2*pad)/(flatMm+P.Lb+P.t+3),
+    (H-2*pad)/(P.D+P.t+3)
+  );
+  const ox=pad+flatMm*sc;
+  const oy=Math.max(54,H*.33);
+  const bottom=[],top=[];
+
+  for(let i=0;i<=140;i++){
+    const a=P.theta*i/140;
+    const sa=Math.sin(a),ca=Math.cos(a);
+    const xb=ox+P.R*sa*sc;
+    const yb=oy+P.R*(1-ca)*sc;
+    bottom.push([xb,yb]);
+    top.push([xb+P.t*sa*sc,yb-P.t*ca*sc]);
+  }
+
+  // Closed glass section: flat → curved bottom → local-normal end face → curved top → flat.
+  ctx.save();
+  ctx.shadowColor='rgba(15,23,42,.16)';
+  ctx.shadowBlur=12;
+  ctx.shadowOffsetY=5;
+  ctx.beginPath();
+  ctx.moveTo(pad,oy);
+  ctx.lineTo(...bottom[0]);
+  for(let i=1;i<bottom.length;i++)ctx.lineTo(...bottom[i]);
+  for(let i=top.length-1;i>=0;i--)ctx.lineTo(...top[i]);
+  ctx.lineTo(pad,oy-P.t*sc);
+  ctx.closePath();
+  const g=ctx.createLinearGradient(pad,oy-P.t*sc,ox+P.Lb*sc,oy+P.D*sc);
+  g.addColorStop(0,'rgba(211,216,221,.62)');
+  g.addColorStop(.48,'rgba(163,171,180,.52)');
+  g.addColorStop(1,'rgba(202,208,214,.68)');
+  ctx.fillStyle=g;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.strokeStyle='rgba(51,65,85,.62)';
+  ctx.lineWidth=.85;
+  ctx.stroke();
+
+  // Curvature-dependent reflection only; no straight white guide line.
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,.34)';
+  ctx.lineWidth=Math.max(1,P.t*sc*.3);
+  ctx.beginPath();
+  for(let i=Math.floor(top.length*.18);i<top.length;i++){
+    const q=top[i];
+    if(i===Math.floor(top.length*.18))ctx.moveTo(q[0],q[1]+P.t*sc*.22);
+    else ctx.lineTo(q[0],q[1]+P.t*sc*.22);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle='#334155';
+  ctx.font='12px Arial';
+  ctx.fillText('2D Bending Cross-section',pad,H-18);
+  
+  ctx.restore();
+}
+const orbit3D={yaw:0,pitch:0,zoom:1,panX:0,panY:0};
+function install3DNav(c){let dragging=false,lastX=0,lastY=0,mode='rotate';c.style.cursor='grab';c.addEventListener('contextmenu',event=>event.preventDefault());c.addEventListener('pointerdown',event=>{dragging=true;mode=event.button===2||event.button===1||event.shiftKey?'pan':'rotate';lastX=event.clientX;lastY=event.clientY;c.setPointerCapture(event.pointerId);c.style.cursor=mode==='pan'?'move':'grabbing'});c.addEventListener('pointermove',event=>{if(!dragging)return;const dx=event.clientX-lastX,dy=event.clientY-lastY;if(mode==='pan'){orbit3D.panX+=dx;orbit3D.panY+=dy}else{orbit3D.yaw+=dx*.009;orbit3D.pitch=Math.max(-3.05,Math.min(3.05,orbit3D.pitch+dy*.009))}lastX=event.clientX;lastY=event.clientY;drawPreset()});const stop=event=>{dragging=false;c.style.cursor='grab';try{c.releasePointerCapture(event.pointerId)}catch(_){}};c.addEventListener('pointerup',stop);c.addEventListener('pointercancel',stop);c.addEventListener('wheel',event=>{event.preventDefault();orbit3D.zoom=Math.max(.45,Math.min(4,orbit3D.zoom*Math.exp(-event.deltaY*.001)));drawPreset()},{passive:false});c.addEventListener('dblclick',()=>{orbit3D.yaw=0;orbit3D.pitch=0;orbit3D.zoom=1;orbit3D.panX=0;orbit3D.panY=0;drawPreset()})}
+function roundedRectContains(x,y,width,height,radius){const hx=width/2,hy=height/2,r=Math.max(0,Math.min(radius,hx,hy)),ax=Math.abs(x),ay=Math.abs(y);if(ax>hx||ay>hy)return false;if(ax<=hx-r||ay<=hy-r)return true;return Math.hypot(ax-(hx-r),ay-(hy-r))<=r}
+function roundedRectSdf(x,y,width,height,radius){const hx=width/2,hy=height/2,r=Math.max(0,Math.min(radius,hx,hy)),qx=Math.abs(x)-(hx-r),qy=Math.abs(y)-(hy-r);return Math.hypot(Math.max(qx,0),Math.max(qy,0))+Math.min(Math.max(qx,qy),0)-r}
+function bendTravel(x,y,width,height,radius){const flatWidth=Math.max(.001,width-2*P.Lb),flatHeight=Math.max(.001,height-2*P.Lb),flatRadius=Math.max(0,radius-P.Lb);return Math.max(0,Math.min(P.Lb,roundedRectSdf(x,y,flatWidth,flatHeight,flatRadius)))}
+function surfaceZ(x,y,width,height,radius,zOffset){const travel=bendTravel(x,y,width,height,radius),alpha=Math.asin(Math.min(1,travel/P.R));return-P.R*(1-Math.cos(alpha))+zOffset}
+const layerControlIds={Glass:'showGlass',OCA:'showOCA',Panel:'showPanel'},layerBaseAlpha={Glass:1,OCA:.88,Panel:1};
+function layerVisible(name){if(name!=='Glass'&&!stackGeometryValid)return false;const control=$(layerControlIds[name]);return!control||control.checked}
+function layerOpacity(name){return layerBaseAlpha[name]*Number($('layerOpacity')?.value||1)}
+function layerOffsets(name){if(name==='Glass')return{top:P.t,bottom:0};if(name==='OCA')return{top:0,bottom:-P.OCA_T};return{top:-P.OCA_T,bottom:-P.OCA_T-P.PANEL_T}}
+function buildSurfaceGrid(layer,zOffset,reverse=false){const width=Math.max(2,P.X-layer.inset*2),height=Math.max(2,P.Y-layer.inset*2),radius=Math.max(0,P.Rc-layer.inset),nx=Math.max(22,Math.min(40,Math.ceil(width/3))),ny=Math.max(36,Math.min(68,Math.ceil(height/3))),vertices=[],triangles=[];for(let j=0;j<=ny;j++){const row=[];for(let i=0;i<=nx;i++){const x=-width/2+width*i/nx,y=-height/2+height*j/ny;row.push(roundedRectContains(x,y,width,height,radius)?{x,y,z:surfaceZ(x,y,width,height,radius,zOffset)}:null)}vertices.push(row)}for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const a=vertices[j][i],b=vertices[j][i+1],c=vertices[j+1][i+1],d=vertices[j+1][i];if(a&&b&&c)triangles.push({p:reverse?[c,b,a]:[a,b,c],layer,surface:reverse?'bottom':'top'});if(a&&c&&d)triangles.push({p:reverse?[d,c,a]:[a,c,d],layer,surface:reverse?'bottom':'top'})}return triangles}
+function roundedRectPerimeterAt(layer,zOffset,arcSteps=28){const width=Math.max(2,P.X-layer.inset*2),height=Math.max(2,P.Y-layer.inset*2),radius=Math.max(0,Math.min(P.Rc-layer.inset,width/2,height/2)),hx=width/2,hy=height/2,centers=[[hx-radius,hy-radius],[-hx+radius,hy-radius],[-hx+radius,-hy+radius],[hx-radius,-hy+radius]],starts=[0,Math.PI/2,Math.PI,Math.PI*1.5],points=[];for(let corner=0;corner<4;corner++)for(let i=0;i<=arcSteps;i++){const angle=starts[corner]+Math.PI*.5*i/arcSteps,x=centers[corner][0]+radius*Math.cos(angle),y=centers[corner][1]+radius*Math.sin(angle);points.push({x,y,z:surfaceZ(x,y,width,height,radius,zOffset)})}return points}
+function buildSurfaceMesh(layer){if(!layerVisible(layer.name))return[];layer.alpha=layerOpacity(layer.name);const offsets=layerOffsets(layer.name),triangles=[...buildSurfaceGrid(layer,offsets.top),...buildSurfaceGrid(layer,offsets.bottom,true)],top=roundedRectPerimeterAt(layer,offsets.top),bottom=roundedRectPerimeterAt(layer,offsets.bottom);for(let i=0;i<top.length;i++){const next=(i+1)%top.length,a=top[i],b=top[next],c=bottom[next],d=bottom[i];triangles.push({p:[a,b,c],layer,surface:'side'},{p:[a,c,d],layer,surface:'side'})}return triangles}
+function roundedRectPerimeter(layer,arcSteps=18){if(!layerVisible(layer.name))return[{x:0,y:0,z:0},{x:0,y:0,z:0}];return roundedRectPerimeterAt(layer,layerOffsets(layer.name).top,arcSteps)}
+function rotate3D(point){const cy=Math.cos(orbit3D.yaw),sy=Math.sin(orbit3D.yaw),cp=Math.cos(orbit3D.pitch),sp=Math.sin(orbit3D.pitch),x=point.x*cy-point.y*sy,y=point.x*sy+point.y*cy,panScale=Math.max(.5,orbit3D.zoom)*4;return{x:x+orbit3D.panX/panScale,y:y*cp-point.z*sp-orbit3D.panY/panScale,z:y*sp+point.z*cp}}
+function triangleShade(points){const u={x:points[1].x-points[0].x,y:points[1].y-points[0].y,z:points[1].z-points[0].z},v={x:points[2].x-points[0].x,y:points[2].y-points[0].y,z:points[2].z-points[0].z},n={x:u.y*v.z-u.z*v.y,y:u.z*v.x-u.x*v.z,z:u.x*v.y-u.y*v.x},m=Math.hypot(n.x,n.y,n.z)||1;return Math.max(.15,Math.min(1,.35+.65*Math.abs((n.x*.25-n.y*.35+n.z*.9)/m)))}
+function draw3DGrid(ctx,project,W,H){ctx.save();ctx.strokeStyle='rgba(100,116,139,.16)';ctx.lineWidth=1;const span=Math.ceil(Math.max(P.X,P.Y)/20)*20;for(let k=-span;k<=span;k+=10){const a=project({x:-span,y:k,z:-P.D-2}),b=project({x:span,y:k,z:-P.D-2}),c=project({x:k,y:-span,z:-P.D-2}),d=project({x:k,y:span,z:-P.D-2});ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.beginPath();ctx.moveTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.stroke()}ctx.restore()}
+function drawSurfaceUnderlays(ctx,project,layers){for(const layer of layers){if(!layerVisible(layer.name))continue;const outline=roundedRectPerimeter(layer,28).map(project),[r,g,b]=layer.color;ctx.beginPath();ctx.moveTo(outline[0].x,outline[0].y);for(const point of outline.slice(1))ctx.lineTo(point.x,point.y);ctx.closePath();ctx.fillStyle=`rgba(${r},${g},${b},${Math.min(.7,layerOpacity(layer.name))})`;ctx.fill()}}
+function drawGlassReflection(ctx,project,layer){if(!layerVisible('Glass'))return;const outline=roundedRectPerimeter(layer,40).map(project),xs=outline.map(p=>p.x),ys=outline.map(p=>p.y),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),width=maxX-minX,height=maxY-minY;ctx.save();ctx.beginPath();ctx.moveTo(outline[0].x,outline[0].y);for(const point of outline.slice(1))ctx.lineTo(point.x,point.y);ctx.closePath();ctx.clip();const gradient=ctx.createLinearGradient(minX+width*.12,maxY,minX+width*.88,minY);gradient.addColorStop(0,'rgba(255,255,255,0)');gradient.addColorStop(.34,'rgba(255,255,255,.04)');gradient.addColorStop(.46,'rgba(255,255,255,.42)');gradient.addColorStop(.56,'rgba(219,234,254,.2)');gradient.addColorStop(.72,'rgba(255,255,255,0)');ctx.fillStyle=gradient;ctx.fillRect(minX-2,minY-2,width+4,height+4);const edge=ctx.createLinearGradient(minX,minY,maxX,maxY);edge.addColorStop(0,'rgba(255,255,255,.3)');edge.addColorStop(.3,'rgba(255,255,255,0)');edge.addColorStop(1,'rgba(37,99,235,.08)');ctx.fillStyle=edge;ctx.fillRect(minX-2,minY-2,width+4,height+4);ctx.restore()}
+function renderPreset(){
+  if(!P)return;
+  const c=$('presetView'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;
+  ctx.clearRect(0,0,W,H);
+  const sceneScale=Math.min(W/(P.X*1.25),H/(P.Y*1.15))*orbit3D.zoom;
+  const distance=Math.max(P.X,P.Y)*3.5;
+  const project=point=>{const q=rotate3D(point),perspective=distance/(distance-q.z);return{x:W*.5+q.x*sceneScale*perspective,y:H*.52-q.y*sceneScale*perspective,depth:q.z}};
+  const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#f8fafc');bg.addColorStop(1,'#dbe4ee');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  draw3DGrid(ctx,project,W,H);
+  const layers=[
+    {name:'Panel',inset:P.PO,color:[51,65,85],alpha:.9},
+    {name:'OCA',inset:P.PO*.5,color:[56,189,248],alpha:.58},
+    {name:'Glass',inset:0,color:[148,163,184],alpha:.7}
+  ],triangles=[];
+  drawSurfaceUnderlays(ctx,project,layers);
+  for(const layer of layers)triangles.push(...buildSurfaceMesh(layer));
+  for(const triangle of triangles){triangle.rotated=triangle.p.map(rotate3D);triangle.depth=triangle.rotated.reduce((sum,p)=>sum+p.z,0)/3}
+  triangles.sort((a,b)=>a.depth-b.depth);
+  for(const triangle of triangles){
+    const points=triangle.p.map(project),baseShade=triangleShade(triangle.rotated),surfaceFactor=triangle.surface==='bottom'?.66:triangle.surface==='side'?.78:1,shade=baseShade*surfaceFactor,[r,g,b]=triangle.layer.color;
+    ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);ctx.lineTo(points[1].x,points[1].y);ctx.lineTo(points[2].x,points[2].y);ctx.closePath();
+    ctx.fillStyle=`rgba(${Math.round(r*shade+255*(1-shade)*.18)},${Math.round(g*shade+255*(1-shade)*.18)},${Math.round(b*shade+255*(1-shade)*.18)},${triangle.layer.alpha})`;ctx.fill();ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=.6;ctx.stroke();
+  }
+  drawGlassReflection(ctx,project,layers.find(layer=>layer.name==='Glass'));
+  for(const layer of layers){if(!layerVisible(layer.name))continue;const outline=roundedRectPerimeter(layer,28).map(project);ctx.beginPath();ctx.moveTo(outline[0].x,outline[0].y);for(const point of outline.slice(1))ctx.lineTo(point.x,point.y);ctx.closePath();ctx.strokeStyle=layer.name==='Glass'?'rgba(30,64,175,.75)':'rgba(15,23,42,.42)';ctx.lineWidth=layer.name==='Glass'?1.8:1;ctx.stroke()}
+  const origin=project({x:-P.X/2,y:-P.Y/2,z:-P.D-2}),axisX=project({x:-P.X/2+15,y:-P.Y/2,z:-P.D-2}),axisY=project({x:-P.X/2,y:-P.Y/2+15,z:-P.D-2}),axisZ=project({x:-P.X/2,y:-P.Y/2,z:13-P.D});
+  for(const [end,color,label]of[[axisX,'#dc2626','X'],[axisY,'#059669','Y'],[axisZ,'#2563eb','Z']]){ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(origin.x,origin.y);ctx.lineTo(end.x,end.y);ctx.stroke();ctx.fillStyle=color;ctx.font='bold 11px Arial';ctx.fillText(label,end.x+4,end.y-4)}
+  ctx.fillStyle='rgba(15,23,42,.82)';ctx.font='12px Arial';ctx.fillText('Closed-layer 3D preview · Top / Side / Bottom surfaces',14,22);ctx.font='11px Arial';ctx.fillStyle='#475569';ctx.fillText(`X ${P.X.toFixed(1)} · Y ${P.Y.toFixed(1)} · R ${P.R.toFixed(2)} · D ${P.D.toFixed(2)} mm`,14,39);
+  let lx=W-118,ly=20;for(const layer of layers.slice().reverse()){const visible=layerVisible(layer.name);ctx.globalAlpha=visible?1:.25;ctx.fillStyle=`rgba(${layer.color.join(',')},${layerOpacity(layer.name)})`;ctx.fillRect(lx,ly,12,12);ctx.fillStyle='#334155';ctx.fillText(layer.name,lx+18,ly+10);ctx.globalAlpha=1;ly+=18}
+}
+let pending3DFrame=0;
+function drawPreset(){cancelAnimationFrame(pending3DFrame);pending3DFrame=requestAnimationFrame(()=>{pending3DFrame=0;const c=$('presetView');if(!c||c.clientWidth<10||c.clientHeight<10)return;try{renderPreset()}catch(error){console.error('3D rendering failed:',error);const ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,W,H);ctx.fillStyle='#b91c1c';ctx.font='bold 15px Arial';ctx.fillText('3D rendering error',24,42);ctx.font='12px Consolas,monospace';ctx.fillText(String(error?.message||error).slice(0,120),24,66)}})}
+function show3DMessage(title,detail){cancelAnimationFrame(pending3DFrame);const c=$('presetView'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,W,H);ctx.fillStyle='#b91c1c';ctx.font='bold 16px Arial';ctx.fillText(title,28,48);ctx.fillStyle='#64748b';ctx.font='13px Arial';ctx.fillText(detail,28,74)}
+function dimLine(ctx,x1,y1,x2,y2,text,color='#2563eb'){ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();const a=Math.atan2(y2-y1,x2-x1),s=7;for(const [x,y,d] of [[x1,y1,1],[x2,y2,-1]]){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+d*s*Math.cos(a+2.5),y+d*s*Math.sin(a+2.5));ctx.lineTo(x+d*s*Math.cos(a-2.5),y+d*s*Math.sin(a-2.5));ctx.closePath();ctx.fill()}ctx.font='12px Arial';ctx.fillText(text,(x1+x2)/2+6,(y1+y2)/2-6);ctx.restore()}
+function sectionPoints(P,sc,ox,oy,alphaMax=P.theta,radius=P.R){const pts=[];for(let i=0;i<=120;i++){const a=alphaMax*i/120;pts.push([ox+radius*Math.sin(a)*sc,oy+radius*(1-Math.cos(a))*sc,a])}return pts}
+function drawSection(){
+  const c=$('section'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;
+  ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,c);
+  const flatMm=Math.max(3,Math.min(8,P.Lb*.65)),pad=44;
+  const sc=Math.min((W-2*pad)/(flatMm+P.Lb+P.t+6),(H-2*pad)/(P.R+P.D+P.t+6));
+  const ox=pad+flatMm*sc,oy=Math.max(92,H*.36),bottom=[],top=[];
+  for(let i=0;i<=160;i++){
+    const a=P.theta*i/160,s=Math.sin(a),co=Math.cos(a),x=P.R*s,z=-P.R*(1-co);
+    bottom.push([ox+x*sc,oy-z*sc]); top.push([ox+(x+P.t*s)*sc,oy-(z+P.t*co)*sc]);
+  }
+  ctx.beginPath();ctx.moveTo(pad,oy);ctx.lineTo(...bottom[0]);for(const q of bottom.slice(1))ctx.lineTo(...q);
+  for(let i=top.length-1;i>=0;i--)ctx.lineTo(...top[i]);ctx.lineTo(pad,oy-P.t*sc);ctx.closePath();
+  const g=ctx.createLinearGradient(pad,oy-P.t*sc,ox+P.Lb*sc,oy+P.D*sc);g.addColorStop(0,'rgba(214,219,224,.72)');g.addColorStop(.58,'rgba(158,168,178,.55)');g.addColorStop(1,'rgba(198,205,212,.68)');ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='rgba(51,65,85,.68)';ctx.lineWidth=.85;ctx.stroke();
+
+  const center=[ox,oy+P.R*sc],start=bottom[0],end=bottom.at(-1),topEnd=top.at(-1);
+  ctx.save();ctx.setLineDash([5,5]);ctx.strokeStyle='#64748b';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(...center);ctx.lineTo(...start);ctx.moveTo(...center);ctx.lineTo(...end);ctx.stroke();ctx.restore();
+  ctx.fillStyle='#475569';ctx.beginPath();ctx.arc(center[0],center[1],3,0,Math.PI*2);ctx.fill();
+  const rm=[(center[0]+end[0])/2,(center[1]+end[1])/2];ctx.font='12px Arial';ctx.fillText(`R ${P.R.toFixed(3)} mm`,rm[0]+7,rm[1]-5);
+
+  ctx.strokeStyle='#7c3aed';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(center[0],center[1],Math.max(18,P.R*sc*.28),-Math.PI/2,-Math.PI/2+P.theta);ctx.stroke();ctx.fillStyle='#7c3aed';ctx.fillText(`θ ${(P.theta*180/Math.PI).toFixed(2)}°`,center[0]+22,center[1]-22);
+
+  const yLb=Math.min(top[0][1],topEnd[1])-28;dimLine(ctx,start[0],yLb,end[0],yLb,`Lb ${P.Lb.toFixed(3)} mm`,'#2563eb');
+  ctx.strokeStyle='#2563eb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(start[0],start[1]);ctx.lineTo(start[0],yLb);ctx.moveTo(end[0],end[1]);ctx.lineTo(end[0],yLb);ctx.stroke();
+  const xD=Math.min(W-26,end[0]+34);dimLine(ctx,xD,start[1],xD,end[1],`D ${P.D.toFixed(3)} mm`,'#dc2626');
+  ctx.strokeStyle='#dc2626';ctx.beginPath();ctx.moveTo(start[0],start[1]);ctx.lineTo(xD,start[1]);ctx.moveTo(end[0],end[1]);ctx.lineTo(xD,end[1]);ctx.stroke();
+  ctx.fillStyle='#334155';ctx.font='11px Arial';ctx.fillText('All R, θ, Lb and D: Glass Bottom Surface basis',pad,H-16);ctx.restore();
+}
+function drawCorner(){const c=$('corner'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,c);const pad=46,sc=Math.min((W-2*pad)/(P.Rc+5),(H-2*pad)/(P.Rc+5)),cx=pad+P.Rc*sc,cy=H-pad,ro=P.Rc*sc,ri=P.Rf*sc;
+ctx.beginPath();ctx.arc(cx,cy,ro,Math.PI,1.5*Math.PI);ctx.lineTo(cx,cy-ri);ctx.arc(cx,cy,ri,1.5*Math.PI,Math.PI,true);ctx.closePath();ctx.fillStyle='rgba(148,163,184,.28)';ctx.fill();ctx.strokeStyle='#334155';ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(cx,cy,ro,Math.PI,1.5*Math.PI);ctx.stroke();
+ctx.setLineDash([6,5]);ctx.strokeStyle='#2563eb';ctx.lineWidth=1.7;ctx.beginPath();ctx.arc(cx,cy,ri,Math.PI,1.5*Math.PI);ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle='#2563eb';ctx.beginPath();ctx.arc(cx,cy,3.5,0,Math.PI*2);ctx.fill();const a=1.24*Math.PI,rx=cx+ri*Math.cos(a),ry=cy+ri*Math.sin(a);dimLine(ctx,cx,cy,rx,ry,`Rf ${P.Rf.toFixed(2)}`,'#2563eb');
+ctx.strokeStyle='#64748b';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-ro,cy);ctx.moveTo(cx,cy);ctx.lineTo(cx,cy-ro);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#111827';ctx.font='12px Arial';ctx.fillText(`Rc = ${P.Rc.toFixed(2)}`,cx-ro+4,cy-ro-10);ctx.fillStyle='#2563eb';ctx.fillText('Top-left corner enlargement · Rf: center → flat-radius arc',pad,20);const a2=1.25*Math.PI;dimLine(ctx,cx+ri*Math.cos(a2),cy+ri*Math.sin(a2),cx+ro*Math.cos(a2),cy+ro*Math.sin(a2),`Lb ${P.Lb.toFixed(2)}`,'#059669');ctx.restore()}
+function drawBorder(){
+  const c=$('border'),ctx=ctx2(c),W=c.clientWidth,H=c.clientHeight;ctx.clearRect(0,0,W,H);ctx.save();applyViewTransform(ctx,c);
+  const pad=46,flatMm=4,totalT=P.t+P.OCA_T+P.PANEL_T;
+  const sc=Math.min((W-2*pad)/(flatMm+P.Lb+P.t+6),(H-2*pad)/(P.D+totalT+7)),ox=pad+flatMm*sc,oy=Math.max(95,H*.34);
+  const curve=(radius,a0,a1,n=160)=>{const a=[];for(let i=0;i<=n;i++){const u=a0+(a1-a0)*i/n;a.push([ox+radius*Math.sin(u)*sc,oy+(P.R-radius*Math.cos(u))*sc,u]);}return a;};
+  const band=(top,bottom,fill)=>{ctx.beginPath();ctx.moveTo(top[0][0],top[0][1]);for(const q of top.slice(1))ctx.lineTo(q[0],q[1]);for(let i=bottom.length-1;i>=0;i--)ctx.lineTo(bottom[i][0],bottom[i][1]);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle='rgba(51,65,85,.58)';ctx.lineWidth=.75;ctx.stroke();};
+  const gb=curve(P.R,0,P.theta),gt=curve(P.R+P.t,0,P.theta);
+  // OCA and Panel include the same left flat start as Glass in Border View.
+  // Their right curved ends still follow the arc-based Panel Size Offset.
+  const otCurve=curve(P.R,0,P.panelAlpha),obCurve=curve(P.R-P.OCA_T,0,P.panelAlpha);
+  const ptCurve=obCurve,pbCurve=curve(P.panelBottomRadius,0,P.panelAlpha);
+  const ot=[[pad,oy,0],...otCurve],ob=[[pad,oy+P.OCA_T*sc,0],...obCurve];
+  const pt=[[pad,oy+P.OCA_T*sc,0],...ptCurve],pb=[[pad,oy+(P.OCA_T+P.PANEL_T)*sc,0],...pbCurve];
+  ctx.beginPath();ctx.moveTo(pad,oy);ctx.lineTo(...gb[0]);for(const q of gb.slice(1))ctx.lineTo(q[0],q[1]);for(let i=gt.length-1;i>=0;i--)ctx.lineTo(gt[i][0],gt[i][1]);ctx.lineTo(pad,oy-P.t*sc);ctx.closePath();ctx.fillStyle='rgba(156,163,175,.34)';ctx.fill();ctx.strokeStyle='#475569';ctx.lineWidth=.8;ctx.stroke();
+  band(ot,ob,'rgba(125,211,252,.42)');band(pt,pb,'rgba(71,85,105,.72)');
+  // Dead Space is an in-panel black region only. No lower protruding marker/extension is drawn.
+  const deadTop=curve(P.panelTopRadius,P.deadAlpha,P.panelAlpha),deadBottom=curve(P.panelBottomRadius,P.deadAlpha,P.panelAlpha);band(deadTop,deadBottom,'rgba(0,0,0,.94)');
+
+  const gte=gt.at(-1),gbe=gb.at(-1),pbe=pb.at(-1),q=curve(P.panelBottomRadius,0,P.deadAlpha).at(-1);
+  const panelEdge=pt.at(-1),deadInner=deadTop[0];
+  const yPhys=oy-38;dimLine(ctx,q[0],yPhys,gte[0],yPhys,`Physical ${P.PhysicalBorder.toFixed(3)} mm`,'#2563eb');ctx.strokeStyle='#2563eb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0],yPhys);ctx.moveTo(gte[0],gte[1]);ctx.lineTo(gte[0],yPhys);ctx.stroke();
+  if(P.visibleValid){const v=[ox+P.visiblePoint.u*sc,oy-P.visiblePoint.z*sc];ctx.save();ctx.setLineDash([1.5,2]);ctx.lineWidth=.55;ctx.strokeStyle='#059669';ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(v[0],v[1]);ctx.stroke();ctx.restore();const yVis=yPhys-28;dimLine(ctx,v[0],yVis,gte[0],yVis,`Visible ${P.VisibleBorder.toFixed(3)} mm`,'#059669');ctx.beginPath();ctx.moveTo(v[0],v[1]);ctx.lineTo(v[0],yVis);ctx.moveTo(gte[0],gte[1]);ctx.lineTo(gte[0],yVis);ctx.stroke();}
+  else{ctx.fillStyle='#b91c1c';ctx.fillText('Visible Border: Glass Top normal intersection N/A',pad,55);}
+  ctx.font='11px Arial';
+  ctx.fillStyle='#475569';ctx.fillText(`Panel Offset: ${P.PO.toFixed(3)} mm (arc)   ·   Panel Dead Space: ${P.DS.toFixed(3)} mm (arc)`,pad,H-56);
+  ctx.fillStyle='#2563eb';ctx.fillText(`Physical: Panel-bottom dead-space inner point → Glass-top edge (u projection)`,pad,H-38);
+  ctx.fillStyle='#059669';ctx.fillText(`Visible: Glass-top normal intersection → Glass-top edge (u projection)`,pad,H-20);ctx.restore();
+}
+function update(){
+  const p=read(),e=errors(p),s=$('status');
+  const coreRenderable=[p.X,p.Y,p.t,p.R,p.D,p.Rc,p.Lb,p.Rf].every(Number.isFinite)&&p.X>0&&p.Y>0&&p.t>=0&&p.R>0&&p.D>=0&&p.D<=2*p.R&&p.Rf>=0;
+  stackGeometryValid=e.length===0;
+  if(e.length){s.className='status bad';s.innerHTML='<b>Input 확인 필요</b><br>'+e.join('<br>')+(coreRenderable?'<br><b>Glass만 계속 표시합니다.</b>':'');}
+  else{s.className='status ok';s.innerHTML='<b>Geometry valid</b><br>R, D, θ, Lb, Sb는 Glass Bottom Surface 기준입니다.<br>Panel Size Offset과 Dead Space는 Arc Length 기준입니다.<br>OCA Top = Glass Bottom, Panel Top = OCA Bottom입니다.<br>Physical/Visible Border는 u축(Top View) 직선 투영거리입니다.';}
+  const value=(number,digits=3,suffix='')=>Number.isFinite(number)?number.toFixed(digits)+suffix:'-';
+  $('theta').textContent=value(p.theta*180/Math.PI,3,'°');$('Lb').textContent=value(p.Lb,3,' mm');$('Sb').textContent=value(p.Sb,3,' mm');$('Rf').textContent=value(p.Rf,3,' mm');$('DR').textContent=value(p.DR,2);$('Shrinkage').textContent=value(p.Shrinkage*100,3,' %');$('PhysicalBorder').textContent=value(p.PhysicalBorder,3,' mm');$('VisibleBorder').textContent=p.visibleValid?value(p.VisibleBorder,3,' mm'):'N/A';
+  if(!coreRenderable){P=null;show3DMessage('Glass geometry cannot be rendered','Check X, Y, t, R, D and Rc values.');return}
+  P=p;drawPreset();
+}
+const SHARED_INPUT_KEY='four-side-curved-display:shared-inputs:v1';
+const SHARED_INPUT_IDS=['X','Y','t','R','D','Rc','PO','DS','OCA_T','PANEL_T'];
+let applyingSharedInputs=false;
+function saveSharedInputs(){if(applyingSharedInputs)return;const values={};for(const id of SHARED_INPUT_IDS)values[id]=$(id).value;localStorage.setItem(SHARED_INPUT_KEY,JSON.stringify({values,updatedAt:Date.now()}));}
+function applySharedInputs(raw=localStorage.getItem(SHARED_INPUT_KEY)){if(!raw)return;try{const data=JSON.parse(raw),values=data.values||data;applyingSharedInputs=true;for(const id of SHARED_INPUT_IDS)if(values[id]!==undefined)$(id).value=values[id];update();}catch(error){console.warn('Shared input sync ignored:',error)}finally{applyingSharedInputs=false}}
+installNav($('presetView'));for(const id of SHARED_INPUT_IDS)$(id).addEventListener('input',()=>{update();saveSharedInputs()});for(const id of ['showGlass','showOCA','showPanel','layerOpacity'])$(id).addEventListener('input',drawPreset);window.addEventListener('storage',event=>{if(event.key===SHARED_INPUT_KEY)applySharedInputs(event.newValue)});window.addEventListener('resize',()=>{if(P)drawPreset()});window.addEventListener('pageshow',()=>{if(P)drawPreset()});new ResizeObserver(()=>{if(P)drawPreset()}).observe($('presetView'));applySharedInputs();requestAnimationFrame(update);
+</script>
+</body></html>

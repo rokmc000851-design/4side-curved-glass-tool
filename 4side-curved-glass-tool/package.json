@@ -1,0 +1,15 @@
+{
+  "name": "4side-curved-glass-tool",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:3d": "node scripts/build-three-standalone.mjs"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
