@@ -9,7 +9,7 @@
 header{height:54px;padding:9px 180px 9px 14px;background:#fff;border-bottom:1px solid var(--line);overflow:hidden;position:relative} h1{font-size:17px;margin:0;line-height:21px}.sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tab-link{position:absolute;right:14px;top:10px;padding:8px 12px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none;font-size:12px;font-weight:700}
 .app{display:grid;grid-template-columns:clamp(245px,22vw,320px) minmax(0,1fr);height:calc(100vh - 54px);min-height:0;overflow:hidden} aside{padding:10px;border-right:1px solid var(--line);background:#f8fafc;overflow:auto;min-height:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.05)} .pad{padding:10px}
-.fields{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px} label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.input-group{margin-top:9px;padding-top:8px;border-top:1px solid #e2e8f0}.input-group-title{font-size:11px;font-weight:700;color:#2563eb;margin-bottom:6px}.input-group:first-of-type{border-top:0}.input-actions{display:flex;justify-content:flex-end;margin-top:9px}.input-actions button{padding:6px 10px;font-size:11px} label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
 input{width:100%;padding:6px;border-radius:8px;border:1px solid #b8c2d0;background:#fff;color:#111827} button{border:1px solid #b8c2d0;background:#fff;color:#1e293b;border-radius:8px;padding:9px 11px;cursor:pointer;font-weight:600}
 button.active,.primary{background:var(--accent);border-color:var(--accent);color:#fff}.row{display:flex;gap:8px;margin-top:9px}.row>*{flex:1}
 .status{margin-top:7px;padding:7px;border-radius:8px;background:#f8fafc;font-size:12px;line-height:1.45}.ok{border-left:3px solid var(--good)}.bad{border-left:3px solid var(--bad)}
@@ -26,12 +26,11 @@ main{padding:10px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1
 <body>
 <header><h1>4-Side Curved Cover Glass Geometry — Model A</h1><div class="sub">Glass + OCA + Panel Standalone Final v20 · Drag 이동 · Wheel 확대/축소 · Double-click 초기화</div><a class="tab-link" href="4side_curved_glass_3d_rendering_v1.html" target="_blank" rel="noopener">Open 3D Rendering</a></header>
 <div class="app">
-<aside><div class="card pad"><b>Input Parameters (mm)</b><div class="fields">
-<div><label>X — X Size</label><input id="X" type="number" value="75" step="1"></div><div><label>Y — Y Size</label><input id="Y" type="number" value="160" step="1"></div>
-<div><label>t — Thickness</label><input id="t" type="number" value="0.5" step="0.1"></div><div><label>R — Bending R</label><input id="R" type="number" value="10" step="0.5"></div>
-<div><label>D — Bending Depth</label><input id="D" type="number" value="1" step="0.1"></div><div><label>Rc — Corner Round R</label><input id="Rc" type="number" value="10" step="0.5"></div>
-<div><label>Panel Size Offset — Arc Length</label><input id="PO" type="number" value="0.1" step="0.05"></div><div><label>Panel Dead Space — Arc Length</label><input id="DS" type="number" value="0.3" step="0.05"></div>
-<div><label>OCA Thickness</label><input id="OCA_T" type="number" value="0.1" step="0.01"></div><div><label>Panel Thickness</label><input id="PANEL_T" type="number" value="0.1" step="0.01"></div></div>
+<aside><div class="card pad"><b>Input Parameters (mm)</b>
+<div class="input-group"><div class="input-group-title">Size</div><div class="fields"><div><label>Glass X</label><input id="X" type="number" value="75" step="1"></div><div><label>Glass Y</label><input id="Y" type="number" value="160" step="1"></div><div><label>Panel Offset</label><input id="PO" type="number" value="0.1" step="0.05"></div><div><label>Panel Dead Space</label><input id="DS" type="number" value="0.5" step="0.05"></div></div></div>
+<div class="input-group"><div class="input-group-title">Thickness</div><div class="fields"><div><label>Glass T</label><input id="t" type="number" value="0.5" step="0.1"></div><div><label>OCA T</label><input id="OCA_T" type="number" value="0.1" step="0.01"></div><div><label>Panel T</label><input id="PANEL_T" type="number" value="0.1" step="0.01"></div></div></div>
+<div class="input-group"><div class="input-group-title">Bending</div><div class="fields"><div><label>Bending R</label><input id="R" type="number" value="10" step="0.5"></div><div><label>Bending Depth</label><input id="D" type="number" value="1" step="0.1"></div><div><label>Corner Round R</label><input id="Rc" type="number" value="10" step="0.5"></div></div></div>
+<div class="input-actions"><button id="resetInputs" type="button">Reset Inputs</button></div>
 <div id="status" class="status ok"></div>
 <table><tr><td colspan="2" style="text-align:left;color:#64748b;font-family:Arial,sans-serif"><b>All bending dimensions: Glass Bottom Surface basis</b></td></tr><tr><td>θ — Bending Angle</td><td id="theta">-</td></tr><tr><td>Lb — Bending Length</td><td id="Lb">-</td></tr><tr><td>Sb — Arc Length</td><td id="Sb">-</td></tr><tr><td>Rf — Flat Corner R</td><td id="Rf">-</td></tr><tr><td>D/R (H/R) — Depth / Bending R</td><td id="DR">-</td></tr><tr><td>Shrinkage — Corner Compression</td><td id="Shrinkage">-</td></tr><tr><td>Physical Border</td><td id="PhysicalBorder">-</td></tr><tr><td>Visible Border</td><td id="VisibleBorder">-</td></tr></table>
 </div></aside>
@@ -265,6 +264,7 @@ const SHARED_INPUT_IDS=['X','Y','t','R','D','Rc','PO','DS','OCA_T','PANEL_T'];
 let applyingSharedInputs=false;
 function saveSharedInputs(){if(applyingSharedInputs)return;const values={};for(const id of SHARED_INPUT_IDS)values[id]=$(id).value;localStorage.setItem(SHARED_INPUT_KEY,JSON.stringify({values,updatedAt:Date.now()}));}
 function applySharedInputs(raw=localStorage.getItem(SHARED_INPUT_KEY)){if(!raw)return;try{const data=JSON.parse(raw),values=data.values||data;applyingSharedInputs=true;for(const id of SHARED_INPUT_IDS)if(values[id]!==undefined)$(id).value=values[id];update();}catch(error){console.warn('Shared input sync ignored:',error)}finally{applyingSharedInputs=false}}
+$('resetInputs').addEventListener('click',()=>{const defaults={X:75,Y:160,t:.5,R:10,D:1,Rc:10,PO:.1,DS:.5,OCA_T:.1,PANEL_T:.1};for(const [id,value] of Object.entries(defaults))$(id).value=value;update();saveSharedInputs()});
 ['presetView','section','corner','border'].forEach(id=>installNav($(id)));document.querySelectorAll('input').forEach(el=>el.addEventListener('input',()=>{update();saveSharedInputs()}));window.addEventListener('storage',event=>{if(event.key===SHARED_INPUT_KEY)applySharedInputs(event.newValue)});window.addEventListener('resize',()=>{if(P){drawPreset();drawSection();drawCorner();drawBorder()}});applySharedInputs();update();
 </script>
 </body></html>

@@ -275,7 +275,8 @@ canvas.addEventListener('pointerdown',()=>{cameraTween=null});
 canvas.addEventListener('dblclick',()=>{fitCamera(true);controls.reset()});
 new ResizeObserver(resize).observe(canvas);
 
-loadShared();update();fitCamera(true);resize();
+const hadSharedInputs=localStorage.getItem(SHARED_KEY)!==null;
+loadShared();update();if(!hadSharedInputs)saveShared();fitCamera(true);resize();
 const initialView=new URLSearchParams(location.search).get('view');
 if(initialView)setPreset(initialView);
 renderer.setAnimationLoop(time=>{updateCameraTween(time);controls.update();renderer.render(scene,camera)});
