@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildGlassGeometry, makeGlassParams } from './glass-geometry.js';
+import { buildGlassGeometry, buildRoundedBoundaryGeometry, makeGlassParams } from './glass-geometry.js';
 
 const $ = id => document.getElementById(id);
 const INPUT_IDS = ['X','Y','t','R','D','Rc','PO','DS','OCA_T','PANEL_T'];
@@ -153,7 +153,7 @@ function materials(p){
 }
 
 function clearModel(){
-  while(modelRoot.children.length){const child=modelRoot.children.pop();child.geometry?.dispose();child.material?.dispose()}
+  while(modelRoot.children.length){const child=modelRoot.children.pop();child.traverse(object=>{object.geometry?.dispose();if(Array.isArray(object.material))object.material.forEach(material=>material.dispose());else object.material?.dispose()})}
 }
 
 function rebuildModel(){
@@ -168,15 +168,22 @@ function rebuildModel(){
     if(def.name!=='Glass'&&!stackValid)continue;
     if(!$('show'+def.name).checked)continue;
     let geometry;
+    let glassParams;
     if(def.name==='Glass'){
-      geometry=buildGlassGeometry(makeGlassParams({width:params.X,height:params.Y,thickness:params.t,bendRadius:params.R,bendDepth:params.D,cornerRadius:params.Rc,detail:2}));
+      glassParams=makeGlassParams({width:params.X,height:params.Y,thickness:params.t,bendRadius:params.R,bendDepth:params.D,cornerRadius:params.Rc,detail:2});
+      geometry=buildGlassGeometry(glassParams);
       geometry.translate(0,0,params.t/2);
     }else geometry=buildClosedLayer(params,def);
     const mesh=new THREE.Mesh(geometry,mats[def.name]);
     mesh.name=def.name; mesh.renderOrder=def.name==='Glass'?3:def.name==='OCA'?2:1; modelRoot.add(mesh);
     if(def.name==='Glass'){
-      const outline=new THREE.LineSegments(new THREE.EdgesGeometry(geometry,28),new THREE.LineBasicMaterial({color:0xf2ba4b,transparent:true,opacity:.9,depthTest:false}));
-      outline.name='GlassOutline';outline.visible=$('showOutline').checked;outline.renderOrder=10;modelRoot.add(outline);
+      const outline=new THREE.Group();outline.name='GlassOutline';
+      const outerMaterial=new THREE.LineBasicMaterial({color:0xf2ba4b,transparent:true,opacity:.9,depthTest:false});
+      const flatMaterial=new THREE.LineBasicMaterial({color:0x7ee7ff,transparent:true,opacity:.95,depthTest:false});
+      const outer=new THREE.LineSegments(new THREE.EdgesGeometry(geometry,28),outerMaterial);
+      const flatGeometry=buildRoundedBoundaryGeometry(glassParams,glassParams.bendLength,glassParams.thickness/2);flatGeometry.translate(0,0,params.t/2);
+      const flat=new THREE.LineLoop(flatGeometry,flatMaterial);
+      outline.add(outer,flat);outline.visible=$('showOutline').checked;outline.renderOrder=10;modelRoot.add(outline);
     }
   }
 }
@@ -198,18 +205,19 @@ function fitCamera(reset=true){
 function setPreset(name){
   if(!params)return;
   const d=Math.max(params.X,params.Y)*2.2;
-  const corner=new THREE.Vector3(params.X/2-params.Rc*.45,params.Y/2-params.Rc*.45,-params.D*.35);
+  const corner=new THREE.Vector3(params.X/2-params.Rc*.28,-params.Y/2+params.Rc*.28,-params.D*.58);
+  const cornerDistance=Math.max(params.Rc*2.6,params.Lb*3,24);
   const views={
     top:{target:new THREE.Vector3(0,0,0),offset:new THREE.Vector3(0,0,d),zoom:1,up:new THREE.Vector3(0,1,0)},
     bottom:{target:new THREE.Vector3(0,0,-params.D/2),offset:new THREE.Vector3(0,0,-d),zoom:1,up:new THREE.Vector3(0,-1,0)},
-    topCorner:{target:corner,offset:new THREE.Vector3(0,0,d),zoom:4.2},
+    topCorner:{target:corner,offset:new THREE.Vector3(0,0,cornerDistance*1.35),zoom:4.2},
     frontCorner:{target:corner,offset:new THREE.Vector3(0,-d,0),zoom:4,up:new THREE.Vector3(0,0,1)},
     sideCorner:{target:corner,offset:new THREE.Vector3(d,0,0),zoom:4,up:new THREE.Vector3(0,0,1)},
-    isoCorner:{target:corner,offset:new THREE.Vector3(d,-d,.72*d),zoom:3.4}
+    isoCorner:{target:corner,offset:new THREE.Vector3(cornerDistance*.9,-cornerDistance*1.05,cornerDistance*.65),zoom:3.4}
   };
   const view=views[name]||views.top;
   const endPosition=view.target.clone().add(view.offset);
-  cameraTween={start:performance.now(),duration:720,fromPosition:camera.position.clone(),toPosition:endPosition,fromTarget:controls.target.clone(),toTarget:view.target.clone(),fromZoom:camera.zoom,toZoom:view.zoom,fromUp:camera.up.clone(),toUp:(view.up||new THREE.Vector3(0,1,0)).clone(),arc:name==='bottom'?view.target.clone().add(new THREE.Vector3(d,0,0)):null};
+  cameraTween={start:performance.now(),duration:1200,fromPosition:camera.position.clone(),toPosition:endPosition,fromTarget:controls.target.clone(),toTarget:view.target.clone(),fromZoom:camera.zoom,toZoom:view.zoom,fromUp:camera.up.clone(),toUp:(view.up||new THREE.Vector3(0,1,0)).clone(),arc:name==='bottom'?view.target.clone().add(new THREE.Vector3(d,0,0)):null};
 }
 
 function updateCameraTween(now){

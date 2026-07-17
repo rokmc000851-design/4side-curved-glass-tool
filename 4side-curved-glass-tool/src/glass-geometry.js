@@ -87,3 +87,12 @@ export function buildGlassGeometry(input){
   geometry.computeVertexNormals();geometry.computeBoundingSphere();
   return geometry;
 }
+
+export function buildRoundedBoundaryGeometry(input,inset,zOffset){
+  const p=input.segments?input:makeGlassParams(input);
+  const points=roundedRingPoints(p,inset,p.segments).map(point=>{
+    const [x,y,z]=surfacePoint(point.x,point.y,zOffset,p);
+    return new THREE.Vector3(x,y,z);
+  });
+  return new THREE.BufferGeometry().setFromPoints(points);
+}
