@@ -38,9 +38,16 @@ const fill = new THREE.DirectionalLight(0x9ed9ff,.9); fill.position.set(-80,90,7
 const modelRoot = new THREE.Group();
 scene.add(modelRoot);
 let grid;
+const axes=new THREE.AxesHelper(28);axes.visible=false;scene.add(axes);
 let params;
 let stackValid = true;
 let cameraTween = null;
+const glassStyles={
+  aqua:{color:0x70e5da,roughness:.16,clearcoat:.75,clearcoatRoughness:.18,transmission:.34,opacity:.62},
+  clear:{color:0xd8fbff,roughness:.06,clearcoat:.95,clearcoatRoughness:.08,transmission:.58,opacity:.42},
+  graphite:{color:0x8ba6ad,roughness:.22,clearcoat:.6,clearcoatRoughness:.22,transmission:.18,opacity:.72},
+  warm:{color:0xd8c29a,roughness:.14,clearcoat:.8,clearcoatRoughness:.16,transmission:.28,opacity:.58}
+};
 
 function readInputs(){
   const p={}; for(const id of INPUT_IDS)p[id]=Number($(id).value);
@@ -136,9 +143,10 @@ function buildClosedLayer(p,{top,bottom,maxS}){
 
 function materials(p){
   const setting=name=>({color:$(name+'Color').value,opacity:Number($(name+'Opacity').value)});
-  const glass=setting('glass'),oca=setting('oca'),panel=setting('panel');
+  const style=glassStyles[$('glassStyle').value]||glassStyles.aqua;
+  const glass={...style,opacity:Number($('glassOpacity').value)},oca=setting('oca'),panel=setting('panel');
   return{
-    Glass:new THREE.MeshPhysicalMaterial({color:glass.color,roughness:.16,metalness:0,transmission:.34,thickness:Math.max(.01,p.t),ior:1.5,clearcoat:.75,clearcoatRoughness:.18,transparent:true,opacity:glass.opacity,side:THREE.DoubleSide,depthWrite:false}),
+    Glass:new THREE.MeshPhysicalMaterial({color:glass.color,roughness:glass.roughness,metalness:0,transmission:glass.transmission,thickness:Math.max(.01,p.t),ior:1.5,clearcoat:glass.clearcoat,clearcoatRoughness:glass.clearcoatRoughness,transparent:true,opacity:glass.opacity,side:THREE.DoubleSide,depthWrite:false}),
     OCA:new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.16,metalness:0,transmission:.82,thickness:Math.max(.01,p.OCA_T),attenuationColor:new THREE.Color(oca.color),attenuationDistance:10,ior:1.47,transparent:oca.opacity<1,opacity:oca.opacity,side:THREE.FrontSide,depthWrite:oca.opacity>.92,envMapIntensity:.5}),
     Panel:new THREE.MeshStandardMaterial({color:panel.color,roughness:.42,metalness:.05,transparent:panel.opacity<1,opacity:panel.opacity,side:THREE.FrontSide,depthWrite:panel.opacity>.92})
   };
@@ -166,6 +174,10 @@ function rebuildModel(){
     }else geometry=buildClosedLayer(params,def);
     const mesh=new THREE.Mesh(geometry,mats[def.name]);
     mesh.name=def.name; mesh.renderOrder=def.name==='Glass'?3:def.name==='OCA'?2:1; modelRoot.add(mesh);
+    if(def.name==='Glass'){
+      const outline=new THREE.LineSegments(new THREE.EdgesGeometry(geometry,28),new THREE.LineBasicMaterial({color:0xf2ba4b,transparent:true,opacity:.9,depthTest:false}));
+      outline.name='GlassOutline';outline.visible=$('showOutline').checked;outline.renderOrder=10;modelRoot.add(outline);
+    }
   }
 }
 
@@ -173,7 +185,7 @@ function updateGrid(){
   if(grid){scene.remove(grid);grid.geometry.dispose();grid.material.dispose()}
   const size=Math.ceil(Math.max(params.X,params.Y)/20)*40;
   grid=new THREE.GridHelper(size,Math.max(12,Math.round(size/10)),0x46525c,0x273139);
-  grid.rotation.x=Math.PI/2; grid.position.z=-Math.max(18,params.D+4); grid.material.transparent=true;grid.material.opacity=.7;scene.add(grid);
+  grid.rotation.x=Math.PI/2; grid.position.z=-Math.max(18,params.D+4); grid.material.transparent=true;grid.material.opacity=.7;grid.visible=$('showGrid').checked;scene.add(grid);
 }
 
 function fitCamera(reset=true){
@@ -191,19 +203,20 @@ function setPreset(name){
     top:{target:new THREE.Vector3(0,0,0),offset:new THREE.Vector3(0,0,d),zoom:1,up:new THREE.Vector3(0,1,0)},
     bottom:{target:new THREE.Vector3(0,0,-params.D/2),offset:new THREE.Vector3(0,0,-d),zoom:1,up:new THREE.Vector3(0,-1,0)},
     topCorner:{target:corner,offset:new THREE.Vector3(0,0,d),zoom:4.2},
-    frontCorner:{target:corner,offset:new THREE.Vector3(0,-d,.18*d),zoom:4},
-    sideCorner:{target:corner,offset:new THREE.Vector3(d,0,.18*d),zoom:4},
+    frontCorner:{target:corner,offset:new THREE.Vector3(0,-d,0),zoom:4,up:new THREE.Vector3(0,0,1)},
+    sideCorner:{target:corner,offset:new THREE.Vector3(d,0,0),zoom:4,up:new THREE.Vector3(0,0,1)},
     isoCorner:{target:corner,offset:new THREE.Vector3(d,-d,.72*d),zoom:3.4}
   };
   const view=views[name]||views.top;
   const endPosition=view.target.clone().add(view.offset);
-  cameraTween={start:performance.now(),duration:720,fromPosition:camera.position.clone(),toPosition:endPosition,fromTarget:controls.target.clone(),toTarget:view.target.clone(),fromZoom:camera.zoom,toZoom:view.zoom,fromUp:camera.up.clone(),toUp:(view.up||new THREE.Vector3(0,1,0)).clone()};
+  cameraTween={start:performance.now(),duration:720,fromPosition:camera.position.clone(),toPosition:endPosition,fromTarget:controls.target.clone(),toTarget:view.target.clone(),fromZoom:camera.zoom,toZoom:view.zoom,fromUp:camera.up.clone(),toUp:(view.up||new THREE.Vector3(0,1,0)).clone(),arc:name==='bottom'?view.target.clone().add(new THREE.Vector3(d,0,0)):null};
 }
 
 function updateCameraTween(now){
   if(!cameraTween)return;
   const raw=Math.min(1,(now-cameraTween.start)/cameraTween.duration),t=raw<.5?4*raw*raw*raw:1-Math.pow(-2*raw+2,3)/2;
-  camera.position.lerpVectors(cameraTween.fromPosition,cameraTween.toPosition,t);controls.target.lerpVectors(cameraTween.fromTarget,cameraTween.toTarget,t);camera.up.lerpVectors(cameraTween.fromUp,cameraTween.toUp,t).normalize();camera.zoom=THREE.MathUtils.lerp(cameraTween.fromZoom,cameraTween.toZoom,t);camera.lookAt(controls.target);camera.updateProjectionMatrix();
+  if(cameraTween.arc){const a=cameraTween.fromPosition.clone().lerp(cameraTween.arc,t),b=cameraTween.arc.clone().lerp(cameraTween.toPosition,t);camera.position.lerpVectors(a,b,t)}else camera.position.lerpVectors(cameraTween.fromPosition,cameraTween.toPosition,t);
+  controls.target.lerpVectors(cameraTween.fromTarget,cameraTween.toTarget,t);camera.up.lerpVectors(cameraTween.fromUp,cameraTween.toUp,t).normalize();camera.zoom=THREE.MathUtils.lerp(cameraTween.fromZoom,cameraTween.toZoom,t);camera.lookAt(controls.target);camera.updateProjectionMatrix();
   if(raw>=1)cameraTween=null;
 }
 
@@ -240,7 +253,12 @@ function saveShared(){const values={};for(const id of INPUT_IDS)values[id]=$(id)
 function loadShared(raw=localStorage.getItem(SHARED_KEY)){if(!raw)return;try{const values=(JSON.parse(raw).values||JSON.parse(raw));for(const id of INPUT_IDS)if(values[id]!==undefined)$(id).value=values[id]}catch(error){console.warn(error)}}
 
 for(const id of INPUT_IDS)$(id).addEventListener('input',()=>{update();saveShared()});
-for(const id of ['showGlass','showOCA','showPanel','glassColor','glassOpacity','ocaColor','ocaOpacity','panelColor','panelOpacity'])$(id).addEventListener('input',rebuildModel);
+for(const id of ['showGlass','showOCA','showPanel','glassOpacity','ocaColor','ocaOpacity','panelColor','panelOpacity'])$(id).addEventListener('input',rebuildModel);
+$('glassStyle').addEventListener('change',()=>{$('glassOpacity').value=(glassStyles[$('glassStyle').value]||glassStyles.aqua).opacity;rebuildModel()});
+$('showGrid').addEventListener('input',()=>{if(grid)grid.visible=$('showGrid').checked});
+$('showAxes').addEventListener('input',()=>{axes.visible=$('showAxes').checked});
+$('showOutline').addEventListener('input',()=>{const outline=modelRoot.getObjectByName('GlassOutline');if(outline)outline.visible=$('showOutline').checked});
+$('backgroundMode').addEventListener('change',()=>{const white=$('backgroundMode').value==='white';scene.background.set(white?0xf4f6f8:0x101418);if(grid){grid.material.color?.set?.(white?0xb8c2cc:0x273139);grid.material.needsUpdate=true}});
 for(const button of document.querySelectorAll('[data-view]'))button.addEventListener('click',()=>setPreset(button.dataset.view));
 window.addEventListener('storage',event=>{if(event.key===SHARED_KEY){loadShared(event.newValue);update()}});
 canvas.addEventListener('pointerdown',()=>{cameraTween=null});
