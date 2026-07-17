@@ -13,7 +13,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NoToneMapping;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x101418);
+scene.background = new THREE.Color(0x626b74);
 
 const camera = new THREE.OrthographicCamera(-100,100,100,-100,0.1,1000);
 camera.position.set(0,0,250);
@@ -269,6 +269,7 @@ $('showGrid').addEventListener('input',()=>{if(grid)grid.visible=$('showGrid').c
 $('showAxes').addEventListener('input',()=>{axes.visible=$('showAxes').checked});
 $('showOutline').addEventListener('input',()=>{const outline=modelRoot.getObjectByName('GlassOutline');if(outline)outline.visible=$('showOutline').checked});
 $('backgroundMode').addEventListener('change',()=>{const mode=$('backgroundMode').value;scene.background.set(mode==='white'?0xf4f6f8:mode==='gray'?0x626b74:0x101418);if(params)updateGrid()});
+$('resetView').addEventListener('click',()=>{cameraTween=null;fitCamera(true)});
 for(const button of document.querySelectorAll('[data-view]'))button.addEventListener('click',()=>setPreset(button.dataset.view));
 window.addEventListener('storage',event=>{if(event.key===SHARED_KEY){loadShared(event.newValue);update()}});
 canvas.addEventListener('pointerdown',()=>{cameraTween=null});
